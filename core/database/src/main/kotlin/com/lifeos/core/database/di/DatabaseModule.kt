@@ -30,7 +30,7 @@ object DatabaseModule {
     fun provideLifeOsDatabase(
         @ApplicationContext context: Context,
         passphraseProvider: DatabasePassphraseProvider
-    ): LifeOsDatabase = LifeOsDatabase.buildEncryptedDatabase(
+    ): LifeOsDatabase = LifeOsDatabase.getInstance(
         context = context,
         passphraseProvider = passphraseProvider
     )
