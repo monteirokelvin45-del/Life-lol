@@ -59,6 +59,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lifeos.core.ai.security.AiLlmProvider
 import com.lifeos.core.domain.model.AiExtractedPlanPayload
 import com.lifeos.core.domain.model.BookDomainModel
 import com.lifeos.core.domain.model.TimeOfDayContext
@@ -485,7 +486,12 @@ fun HomeScreen(
 
     if (showPortalModal) {
         PortalMagicoInputDialog(
+            currentProvider = state.aiProvider,
+            hasSavedApiKey = state.hasSavedApiKey,
             onDismiss = { showPortalModal = false },
+            onSaveProviderConfig = { provider, key ->
+                viewModel.onIntent(HomeIntent.SaveAiProviderConfig(provider, key))
+            },
             onAnalyze = { rawText ->
                 showPortalModal = false
                 viewModel.onIntent(HomeIntent.PreviewRawText(rawText))
@@ -680,9 +686,14 @@ private fun NightClosureBannerCard(
 
 @Composable
 private fun PortalMagicoInputDialog(
+    currentProvider: AiLlmProvider,
+    hasSavedApiKey: Boolean,
     onDismiss: () -> Unit,
+    onSaveProviderConfig: (AiLlmProvider, String) -> Unit,
     onAnalyze: (String) -> Unit
 ) {
+    var selectedProvider by remember(currentProvider) { mutableStateOf(currentProvider) }
+    var apiKeyInput by remember { mutableStateOf("") }
     var text by remember {
         mutableStateOf(
             """
@@ -700,21 +711,71 @@ private fun PortalMagicoInputDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    text = "Cole qualquer ficha caótica, edital, lista de contas ou frase falada. A IA montará o sistema inteiro em segundos:",
+                    text = "Motor de IA (100% funcional Offline ou via LLM em Nuvem):",
                     color = LifeOsTheme.TextSecondary,
-                    fontSize = 13.sp
+                    fontSize = 11.sp
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    listOf(
+                        AiLlmProvider.OFFLINE_LOCAL to "⚡ Offline Local",
+                        AiLlmProvider.GOOGLE_GEMINI to "✨ Gemini 2.0",
+                        AiLlmProvider.GROQ_CLOUD to "🚀 Groq 70B",
+                        AiLlmProvider.OPENAI to "OpenAI"
+                    ).forEach { (prov, shortLabel) ->
+                        FilterChip(
+                            selected = selectedProvider == prov,
+                            onClick = {
+                                selectedProvider = prov
+                                if (prov == AiLlmProvider.OFFLINE_LOCAL) {
+                                    onSaveProviderConfig(prov, "")
+                                }
+                            },
+                            label = { Text(shortLabel, fontSize = 11.sp) }
+                        )
+                    }
+                }
+
+                if (selectedProvider != AiLlmProvider.OFFLINE_LOCAL) {
+                    OutlinedTextField(
+                        value = apiKeyInput,
+                        onValueChange = { apiKeyInput = it },
+                        singleLine = true,
+                        label = {
+                            Text(
+                                text = if (hasSavedApiKey) "Chave salva no Keystore (digite para trocar)" else "API Key (${selectedProvider.name})",
+                                fontSize = 11.sp
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                Text(
+                    text = "Cole qualquer ficha caótica, edital, recibo ou frase falada:",
+                    color = LifeOsTheme.TextSecondary,
+                    fontSize = 12.sp
                 )
                 OutlinedTextField(
                     value = text,
                     onValueChange = { text = it },
-                    minLines = 6,
+                    minLines = 5,
                     modifier = Modifier.fillMaxWidth()
                 )
             }
         },
         confirmButton = {
             Button(
-                onClick = { onAnalyze(text) },
+                onClick = {
+                    if (selectedProvider != AiLlmProvider.OFFLINE_LOCAL && apiKeyInput.isNotBlank()) {
+                        onSaveProviderConfig(selectedProvider, apiKeyInput)
+                    }
+                    onAnalyze(text)
+                },
                 colors = ButtonDefaults.buttonColors(containerColor = LifeOsTheme.PurpleStudy)
             ) {
                 Text("Analisar Documento →", color = Color.White, fontWeight = FontWeight.Bold)

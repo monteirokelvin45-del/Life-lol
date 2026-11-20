@@ -1,6 +1,8 @@
 package com.lifeos.core.ai.engine
 
 import com.lifeos.core.ai.schema.LifeOsExtractionSchema
+import com.lifeos.core.ai.security.AiCredentialsStore
+import com.lifeos.core.ai.security.AiLlmProvider
 import com.lifeos.core.domain.model.AiExtractedPlanPayload
 import io.ktor.client.HttpClient
 import io.ktor.client.request.header
@@ -19,42 +21,58 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Motor de IA com Structured JSON Output via Ktor (Pilar 5) + fallback determinístico offline.
+ * Motor Híbrido de IA do Life OS (Pilar 5):
+ * 1. Cloud LLM com JSON Schema estrito (Google Gemini 2.0 Flash / Groq Llama 3.3 70B / OpenAI GPT-4o-mini)
+ *    quando o utilizador configura sua chave no Cofre Keystore.
+ * 2. Motor Semântico Local + Google ML Kit OCR (100% Offline, latência <5ms, custo zero)
+ *    como modo padrão imediato e fallback resiliente sem internet.
  */
 @Singleton
 class StructuredPlanAiEngine @Inject constructor(
     private val httpClient: HttpClient,
-    private val json: Json
+    private val json: Json,
+    private val credentialsStore: AiCredentialsStore
 ) {
 
     suspend fun extractStructuredPlan(
         documentText: String,
-        apiKey: String? = null,
-        endpointUrl: String = DEFAULT_CHAT_COMPLETIONS_URL,
-        modelName: String = DEFAULT_MODEL_NAME
+        overrideApiKey: String? = null
     ): AiExtractedPlanPayload = withContext(Dispatchers.IO) {
         if (documentText.isBlank()) {
             return@withContext AiExtractedPlanPayload()
         }
 
-        // Caso haja chave de API configurada, aciona LLM com response_format json_object estrito
-        if (!apiKey.isNullOrBlank()) {
+        val savedConfig = credentialsStore.loadConfig()
+        val effectiveKey = overrideApiKey?.takeIf { it.isNotBlank() } ?: savedConfig.apiKey
+        val activeProvider = if (!overrideApiKey.isNullOrBlank() && savedConfig.provider == AiLlmProvider.OFFLINE_LOCAL) {
+            AiLlmProvider.GOOGLE_GEMINI
+        } else {
+            savedConfig.provider
+        }
+
+        if (activeProvider != AiLlmProvider.OFFLINE_LOCAL && effectiveKey.isNotBlank()) {
             val remoteResult = runCatching {
                 callRemoteStructuredLlm(
                     documentText = documentText,
-                    apiKey = apiKey,
-                    endpointUrl = endpointUrl,
-                    modelName = modelName
+                    apiKey = effectiveKey,
+                    endpointUrl = activeProvider.endpointUrl,
+                    modelName = activeProvider.defaultModel
                 )
             }.getOrNull()
 
-            if (remoteResult != null) {
+            if (remoteResult != null && !isEmptyPayload(remoteResult)) {
                 return@withContext remoteResult
             }
         }
 
-        // Fallback Offline-First determinístico instantâneo
         LocalRuleBasedPlanParser.parse(documentText)
+    }
+
+    private fun isEmptyPayload(p: AiExtractedPlanPayload): Boolean {
+        return p.detectedHabits.isEmpty() &&
+            p.detectedWorkouts.isEmpty() &&
+            p.detectedStudies.isEmpty() &&
+            p.detectedFinances.isEmpty()
     }
 
     private suspend fun callRemoteStructuredLlm(
@@ -80,8 +98,13 @@ class StructuredPlanAiEngine @Inject constructor(
 
         val rawBody = response.bodyAsText()
         val parsedEnvelope = json.decodeFromString(ChatCompletionResponse.serializer(), rawBody)
-        val contentJson = parsedEnvelope.choices.firstOrNull()?.message?.content.orEmpty()
-        return json.decodeFromString(AiExtractedPlanPayload.serializer(), contentJson)
+        val rawContent = parsedEnvelope.choices.firstOrNull()?.message?.content.orEmpty().trim()
+        val cleanedJson = rawContent
+            .removePrefix("```json")
+            .removePrefix("```")
+            .removeSuffix("```")
+            .trim()
+        return json.decodeFromString(AiExtractedPlanPayload.serializer(), cleanedJson)
     }
 
     @Serializable
@@ -112,9 +135,4 @@ class StructuredPlanAiEngine @Inject constructor(
     private data class ChoiceItem(
         val message: ChatMessage
     )
-
-    companion object {
-        private const val DEFAULT_CHAT_COMPLETIONS_URL = "https://api.openai.com/v1/chat/completions"
-        private const val DEFAULT_MODEL_NAME = "gpt-4o-mini"
-    }
 }

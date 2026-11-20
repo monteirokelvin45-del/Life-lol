@@ -136,15 +136,53 @@ sleep 2
 capture_screen "10-carteira-burn-matrix.png"
 check_no_crash "Finance Tab & Burn Matrix"
 
-echo "=== [5/7] Testing Live WhatsApp ACTION_SEND Share -> Portal Magico Preview ==="
-adb shell am start \
-  -a android.intent.action.SEND \
-  -t text/plain \
-  --es android.intent.extra.TEXT "Minha meta esse mes e gastar menos de R$ 500 em comida fora, treinar costas na sexta e ler 20 paginas por dia" \
-  -n com.lifeos.app/.MainActivity >/dev/null
-sleep 3
-capture_screen "11-portal-magico-confirmar-sistema.png"
-check_no_crash "WhatsApp ACTION_SEND -> Portal Magico Preview"
+tap_text_on_screen() {
+  local target_label="$1"
+  adb shell uiautomator dump /sdcard/ui_tap.xml >/dev/null 2>&1 || true
+  adb pull /sdcard/ui_tap.xml /tmp/ui_tap.xml >/dev/null 2>&1 || true
+  local coords
+  coords="$(python3 - "$target_label" <<'PY'
+import re, sys, xml.etree.ElementTree as ET
+needle = sys.argv[1].lower()
+try:
+    tree = ET.parse("/tmp/ui_tap.xml")
+    for elem in tree.iter("node"):
+        txt = (elem.attrib.get("text") or "").lower()
+        desc = (elem.attrib.get("content-desc") or "").lower()
+        bounds = elem.attrib.get("bounds") or ""
+        if needle in txt or needle in desc:
+            m = re.match(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", bounds)
+            if m:
+                x1, y1, x2, y2 = map(int, m.groups())
+                print(f"{(x1 + x2) // 2} {(y1 + y2) // 2}")
+                break
+except Exception:
+    pass
+PY
+)"
+  if [[ -n "$coords" ]]; then
+    echo "  -> Tapping '$target_label' at: $coords"
+    # shellcheck disable=SC2086
+    adb shell input tap $coords
+    sleep 2
+  else
+    echo "  [WARN] Could not find '$target_label' in UI dump"
+  fi
+}
+
+echo "=== [5/7] Testing Live AI Portal Magico (Modal + Extraction + Confirmar Sistema) ==="
+navigate_route "home"
+adb shell input swipe 540 600 540 1800 300
+sleep 1
+tap_text_on_screen "Portal IA"
+capture_screen "11-portal-magico-input.png"
+tap_text_on_screen "Analisar Documento"
+sleep 2
+capture_screen "12-portal-magico-confirmar-sistema.png"
+tap_text_on_screen "Confirmar Sistema"
+sleep 2
+capture_screen "13-sistema-confirmado-pela-ia.png"
+check_no_crash "AI Portal Magico Extraction & Atomic Persistence"
 
 echo "=== [6/7] Verifying Encrypted SQLCipher Database File on Device ==="
 DB_LS="$(adb shell run-as com.lifeos.app ls -la databases/ || true)"

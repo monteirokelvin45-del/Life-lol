@@ -6,6 +6,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lifeos.core.ai.engine.StructuredPlanAiEngine
 import com.lifeos.core.ai.extractor.DocumentTextExtractor
+import com.lifeos.core.ai.security.AiCredentialsStore
+import com.lifeos.core.ai.security.AiLlmProvider
 import com.lifeos.core.domain.algorithm.TimeContextResolver
 import com.lifeos.core.domain.model.AiExtractedPlanPayload
 import com.lifeos.core.domain.model.BalanceWheelScore
@@ -42,6 +44,8 @@ data class HomeUiState(
     val financialOverview: FinancialOverviewModel? = null,
     val activeTimer: ActiveTimerSnapshot = ActiveTimerSnapshot(),
     val pendingPlanPreview: AiExtractedPlanPayload? = null,
+    val aiProvider: AiLlmProvider = AiLlmProvider.OFFLINE_LOCAL,
+    val hasSavedApiKey: Boolean = false,
     val isIngesting: Boolean = false,
     val statusMessage: String? = null
 )
@@ -52,6 +56,7 @@ sealed interface HomeIntent {
     data class ReviewTopic(val topicId: Long) : HomeIntent
     data class PreviewDocumentUri(val uri: Uri) : HomeIntent
     data class PreviewRawText(val text: String) : HomeIntent
+    data class SaveAiProviderConfig(val provider: AiLlmProvider, val apiKey: String) : HomeIntent
     data object ConfirmExtractedSystem : HomeIntent
     data object CancelPlanPreview : HomeIntent
     data class StartPomodoroFocus(val minutes: Int = 25) : HomeIntent
@@ -67,11 +72,13 @@ class HomeViewModel @Inject constructor(
     private val completeStudyReviewUseCase: CompleteStudyReviewUseCase,
     private val ingestPlanUseCase: IngestPlanUseCase,
     private val documentTextExtractor: DocumentTextExtractor,
-    private val aiEngine: StructuredPlanAiEngine
+    private val aiEngine: StructuredPlanAiEngine,
+    private val aiCredentialsStore: AiCredentialsStore
 ) : ViewModel() {
 
     private val manualTimeContext = MutableStateFlow<TimeOfDayContext?>(null)
     private val pendingPreviewFlow = MutableStateFlow<AiExtractedPlanPayload?>(null)
+    private val aiConfigFlow = MutableStateFlow(aiCredentialsStore.loadConfig())
     private val isIngestingFlow = MutableStateFlow(false)
     private val messageFlow = MutableStateFlow<String?>(null)
 
@@ -108,7 +115,11 @@ class HomeViewModel @Inject constructor(
         )
     }
 
-    val uiState: StateFlow<HomeUiState> = combine(coreDomainBundle, auxStateBundle) { core, aux ->
+    val uiState: StateFlow<HomeUiState> = combine(
+        coreDomainBundle,
+        auxStateBundle,
+        aiConfigFlow
+    ) { core, aux, cfg ->
         HomeUiState(
             timeContext = aux.timeContext,
             balanceWheel = core.wheel,
@@ -119,6 +130,8 @@ class HomeViewModel @Inject constructor(
             financialOverview = aux.finance,
             activeTimer = aux.timer,
             pendingPlanPreview = aux.preview,
+            aiProvider = cfg.provider,
+            hasSavedApiKey = cfg.apiKey.isNotBlank(),
             isIngesting = aux.isIngesting,
             statusMessage = aux.message
         )
@@ -144,6 +157,13 @@ class HomeViewModel @Inject constructor(
             }
             is HomeIntent.PreviewRawText -> {
                 parseTextIntoPortalPreview(intent.text)
+            }
+            is HomeIntent.SaveAiProviderConfig -> {
+                viewModelScope.launch {
+                    aiCredentialsStore.saveConfig(intent.provider, intent.apiKey)
+                    aiConfigFlow.value = aiCredentialsStore.loadConfig()
+                    messageFlow.value = "Motor de IA atualizado: ${intent.provider.displayName}"
+                }
             }
             HomeIntent.ConfirmExtractedSystem -> {
                 confirmAndPersistPreview()
