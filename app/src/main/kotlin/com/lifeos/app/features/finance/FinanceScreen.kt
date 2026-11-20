@@ -423,7 +423,7 @@ fun FinanceScreen(viewModel: FinanceViewModel) {
 
                 SpendingBurnMatrix(
                     currentMonthCumulative = ov.burnMatrixPoints
-                        .takeWhile { it.currentMonthCumulative > 0.0 || it.dayOfMonth == 1 }
+                        .take(java.time.LocalDate.now().dayOfMonth.coerceAtLeast(1))
                         .map { it.currentMonthCumulative },
                     previousMonthCumulative = ov.burnMatrixPoints.map { it.previousMonthCumulative }
                 )

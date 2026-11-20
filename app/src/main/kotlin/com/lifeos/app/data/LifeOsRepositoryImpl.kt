@@ -757,12 +757,23 @@ class LifeOsRepositoryImpl @Inject constructor(
         )
 
         val baseMillis = System.currentTimeMillis()
+        val currMonthStart = today.withDayOfMonth(1)
+        val prevMonthStart = today.minusMonths(1).withDayOfMonth(1)
         dao.insertTransactions(
             listOf(
-                FinancialRecordEntity(amount = 65_000.0, type = "INCOME", category = "Salário & Engenharia", timestamp = baseMillis - 86_400_000L * 6, epochDay = today.minusDays(6).toEpochDay(), paymentMethod = "Transferência"),
-                FinancialRecordEntity(amount = 18_000.0, type = "EXPENSE", category = "Moradia", timestamp = baseMillis - 86_400_000L * 5, epochDay = today.minusDays(5).toEpochDay(), paymentMethod = "Transferência"),
+                // Mês anterior (curva de referência cinza na Burn Matrix)
+                FinancialRecordEntity(amount = 6_200.0, type = "EXPENSE", category = "Moradia", timestamp = baseMillis - 86_400_000L * 45, epochDay = prevMonthStart.plusDays(2).toEpochDay(), paymentMethod = "Transferência"),
+                FinancialRecordEntity(amount = 5_800.0, type = "EXPENSE", category = "Alimentação", timestamp = baseMillis - 86_400_000L * 38, epochDay = prevMonthStart.plusDays(8).toEpochDay(), paymentMethod = "Cartão"),
+                FinancialRecordEntity(amount = 7_400.0, type = "EXPENSE", category = "Moradia", timestamp = baseMillis - 86_400_000L * 32, epochDay = prevMonthStart.plusDays(14).toEpochDay(), paymentMethod = "Transferência"),
+                FinancialRecordEntity(amount = 8_900.0, type = "EXPENSE", category = "Transporte", timestamp = baseMillis - 86_400_000L * 25, epochDay = prevMonthStart.plusDays(21).toEpochDay(), paymentMethod = "M-Pesa"),
+
+                // Mês atual (escada laranja luminosa crescente na Burn Matrix)
+                FinancialRecordEntity(amount = 65_000.0, type = "INCOME", category = "Salário & Engenharia", timestamp = baseMillis - 86_400_000L * 18, epochDay = currMonthStart.plusDays(1).toEpochDay(), paymentMethod = "Transferência"),
+                FinancialRecordEntity(amount = 4_200.0, type = "EXPENSE", category = "Transporte", timestamp = baseMillis - 86_400_000L * 17, epochDay = currMonthStart.plusDays(2).toEpochDay(), paymentMethod = "M-Pesa"),
+                FinancialRecordEntity(amount = 6_800.0, type = "EXPENSE", category = "Moradia", timestamp = baseMillis - 86_400_000L * 13, epochDay = currMonthStart.plusDays(6).coerceAtMost(today).toEpochDay(), paymentMethod = "Transferência"),
+                FinancialRecordEntity(amount = 5_500.0, type = "EXPENSE", category = "Moradia", timestamp = baseMillis - 86_400_000L * 9, epochDay = currMonthStart.plusDays(10).coerceAtMost(today).toEpochDay(), paymentMethod = "Transferência"),
                 // Dia sem treino (offset 4 -> 4 % 4 == 0) com gasto maior em comida rápida para evidenciar a correlação real!
-                FinancialRecordEntity(amount = 1_450.0, type = "EXPENSE", category = "Alimentação", timestamp = baseMillis - 86_400_000L * 4, epochDay = today.minusDays(4).toEpochDay(), note = "Delivery noturno sem treino", paymentMethod = "Cartão"),
+                FinancialRecordEntity(amount = 1_650.0, type = "EXPENSE", category = "Alimentação", timestamp = baseMillis - 86_400_000L * 4, epochDay = today.minusDays(4).toEpochDay(), note = "Delivery noturno sem treino", paymentMethod = "Cartão"),
                 FinancialRecordEntity(amount = 980.0, type = "EXPENSE", category = "Alimentação", timestamp = baseMillis - 86_400_000L * 2, epochDay = today.minusDays(2).toEpochDay(), note = "Almoço limpo pós-treino", paymentMethod = "M-Pesa"),
                 FinancialRecordEntity(amount = 2_850.0, type = "EXPENSE", category = "Livros & Educação", timestamp = baseMillis - 86_400_000L, epochDay = today.minusDays(1).toEpochDay(), paymentMethod = "e-Mola"),
                 FinancialRecordEntity(amount = 920.0, type = "EXPENSE", category = "Alimentação", timestamp = baseMillis, epochDay = today.toEpochDay(), note = "Almoço executivo", paymentMethod = "Débito")

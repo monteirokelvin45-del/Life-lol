@@ -82,7 +82,7 @@ fun StudyScreen(viewModel: StudyViewModel) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "07:00 · REVISÃO ESPAÇADA & LEITURA ATIVA",
                         color = LifeOsTheme.PurpleStudy,
@@ -91,16 +91,19 @@ fun StudyScreen(viewModel: StudyViewModel) {
                     Text(
                         text = "Estudos & Biblioteca",
                         color = Color.White,
-                        style = MaterialTheme.typography.headlineLarge
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Black
                     )
                 }
+                Spacer(modifier = Modifier.width(8.dp))
                 Button(
                     onClick = { showAddTopicDialog = true },
-                    colors = ButtonDefaults.buttonColors(containerColor = LifeOsTheme.PurpleStudy)
+                    colors = ButtonDefaults.buttonColors(containerColor = LifeOsTheme.PurpleStudy),
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
                 ) {
-                    Icon(Icons.Rounded.Add, contentDescription = null)
+                    Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Tópico")
+                    Text("Tópico", maxLines = 1, softWrap = false, fontWeight = FontWeight.Bold)
                 }
             }
         }

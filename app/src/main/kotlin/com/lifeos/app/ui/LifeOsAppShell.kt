@@ -59,6 +59,20 @@ fun LifeOsAppShell(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route ?: LifeOsDestination.HOME.route
 
+    LaunchedEffect(incomingSharedUri, incomingSharedText) {
+        if (incomingSharedUri != null || !incomingSharedText.isNullOrBlank()) {
+            if (currentRoute != LifeOsDestination.HOME.route) {
+                navController.navigate(LifeOsDestination.HOME.route) {
+                    popUpTo(navController.graph.findStartDestination().id) {
+                        saveState = true
+                    }
+                    launchSingleTop = true
+                    restoreState = true
+                }
+            }
+        }
+    }
+
     LaunchedEffect(requestedNavRoute) {
         if (!requestedNavRoute.isNullOrBlank()) {
             val valid = LifeOsDestination.entries.any { it.route == requestedNavRoute }
