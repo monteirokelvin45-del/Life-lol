@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Rede para chamadas opcionais ao motor de IA estruturado (Ktor) -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Alarmes Críticos (Estudos Ebbinghaus e Treinos) -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <!-- Notificações e Execução em Segundo Plano -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+
+    <!-- Sincronização com o Calendário Nativo -->
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <uses-permission android:name="android.permission.WRITE_CALENDAR" />
+
+    <!-- Câmera para OCR de Livros Físicos e Recibos -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
+
+    <!-- Acesso a Documentos (PDF, Word, MD) -->
+    <uses-permission
+        android:name="android.permission.READ_MEDIA_DOCUMENTS"
+        tools:ignore="SelectedPhotoAccess" />
+
+    <application
+        android:name=".LifeOsApplication"
+        android:allowBackup="false"
+        android:hardwareAccelerated="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.LifeOS">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- BroadcastReceiver para Disparo de Alarmes Exatos (Doze-Resilient) -->
+        <receiver
+            android:name="com.lifeos.core.system.receiver.ExactAlarmReceiver"
+            android:enabled="true"
+            android:exported="false" />
+
+        <!-- Serviço em Primeiro Plano para Cronômetros de Treino e Pomodoro -->
+        <service
+            android:name="com.lifeos.core.system.service.ActiveExecutionService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Contador contínuo de descanso de treino e foco em estudos." />
+        </service>
+
+        <!-- Widget 4x2 de Tela Inicial em Jetpack Glance -->
+        <receiver
+            android:name=".features.widget.LifeOsWidgetReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/life_os_widget_info" />
+        </receiver>
+
+    </application>
+
+</manifest>

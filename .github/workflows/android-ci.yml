@@ -1,0 +1,42 @@
+name: Android Build & QA
+
+on:
+  push:
+    branches:
+      - main
+      - "arena/**"
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-apk-and-test:
+    name: Compile Kotlin, KAPT, Unit Tests & Debug APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 17 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Gradle 8.5
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.5"
+
+      - name: Run Unit Tests & Assemble Debug APK
+        run: gradle testDebugUnitTest :app:assembleDebug --stacktrace --no-daemon
+
+      - name: Upload Life OS Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: life-os-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error

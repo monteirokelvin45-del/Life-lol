@@ -1,0 +1,5 @@
+-keep class net.sqlcipher.** { *; }
+-keep class net.sqlcipher.database.** { *; }
+-keepattributes *Annotation*
+-keepattributes kotlinx.serialization.Serializable
+-keep class com.lifeos.core.domain.model.**$$serializer { *; }
