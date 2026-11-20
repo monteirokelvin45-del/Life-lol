@@ -15,6 +15,7 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -50,11 +51,29 @@ private enum class LifeOsDestination(
 fun LifeOsAppShell(
     incomingSharedUri: Uri? = null,
     incomingSharedText: String? = null,
-    onConsumedSharedPayload: () -> Unit = {}
+    requestedNavRoute: String? = null,
+    onConsumedSharedPayload: () -> Unit = {},
+    onConsumedNavRoute: () -> Unit = {}
 ) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route ?: LifeOsDestination.HOME.route
+
+    LaunchedEffect(requestedNavRoute) {
+        if (!requestedNavRoute.isNullOrBlank()) {
+            val valid = LifeOsDestination.entries.any { it.route == requestedNavRoute }
+            if (valid) {
+                navController.navigate(requestedNavRoute) {
+                    popUpTo(navController.graph.findStartDestination().id) {
+                        saveState = true
+                    }
+                    launchSingleTop = true
+                    restoreState = true
+                }
+            }
+            onConsumedNavRoute()
+        }
+    }
 
     Scaffold(
         containerColor = LifeOsTheme.PureBlack,

@@ -2,6 +2,7 @@ package com.lifeos.app
 
 import android.Manifest
 import android.content.Intent
+import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -18,6 +19,7 @@ class MainActivity : ComponentActivity() {
 
     private val sharedUriState = mutableStateOf<Uri?>(null)
     private val sharedTextState = mutableStateOf<String?>(null)
+    private val navRouteRequestState = mutableStateOf<String?>(null)
 
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -26,20 +28,27 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        window.statusBarColor = Color.BLACK
+        window.navigationBarColor = Color.BLACK
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
 
-        extractIncomingShareIntent(intent)
+        extractIncomingIntent(intent)
 
         setContent {
             LifeOsMaterialTheme {
                 LifeOsAppShell(
                     incomingSharedUri = sharedUriState.value,
                     incomingSharedText = sharedTextState.value,
+                    requestedNavRoute = navRouteRequestState.value,
                     onConsumedSharedPayload = {
                         sharedUriState.value = null
                         sharedTextState.value = null
+                    },
+                    onConsumedNavRoute = {
+                        navRouteRequestState.value = null
                     }
                 )
             }
@@ -49,10 +58,15 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        extractIncomingShareIntent(intent)
+        extractIncomingIntent(intent)
     }
 
-    private fun extractIncomingShareIntent(incoming: Intent?) {
+    private fun extractIncomingIntent(incoming: Intent?) {
+        val requestedTab = incoming?.getStringExtra(EXTRA_NAV_ROUTE)
+        if (!requestedTab.isNullOrBlank()) {
+            navRouteRequestState.value = requestedTab
+        }
+
         if (incoming?.action != Intent.ACTION_SEND) return
         val streamUri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             incoming.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
@@ -66,5 +80,9 @@ class MainActivity : ComponentActivity() {
             streamUri != null -> sharedUriState.value = streamUri
             !extraText.isNullOrBlank() -> sharedTextState.value = extraText
         }
+    }
+
+    companion object {
+        const val EXTRA_NAV_ROUTE = "EXTRA_NAV_ROUTE"
     }
 }

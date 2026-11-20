@@ -187,19 +187,21 @@ fun BalanceWheel(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Row(verticalAlignment = Alignment.Bottom) {
+            Row {
                 Text(
                     text = String.format(Locale.US, "%.1f", overallScore),
                     color = Color.White,
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.Black
+                    fontSize = 27.sp,
+                    fontWeight = FontWeight.Black,
+                    modifier = Modifier.alignByBaseline()
                 )
                 Spacer(modifier = Modifier.width(2.dp))
                 Text(
                     text = "/10",
                     color = LifeOsTheme.TextSecondary,
                     fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.alignByBaseline()
                 )
             }
         }
