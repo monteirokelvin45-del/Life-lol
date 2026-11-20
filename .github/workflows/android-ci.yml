@@ -44,9 +44,8 @@ jobs:
           STATUS=$?
           cat gradle_build.log
           if [ $STATUS -ne 0 ]; then
-            grep -E '(^e: |FAILURE:|^\* What went wrong:|^> |Exception|Error)' gradle_build.log | tail -n 30 | while IFS= read -r line; do
-              echo "::error title=GradleBuild::${line}"
-            done
+            MSG=$( (grep -E '^(e: |w: .*error)' gradle_build.log | head -n 25; awk '/FAILURE:/,0' gradle_build.log | head -n 35) | tr '\n' '|' | sed 's/|/%0A/g' )
+            echo "::error title=GradleFailure::${MSG}"
             exit $STATUS
           fi
 
