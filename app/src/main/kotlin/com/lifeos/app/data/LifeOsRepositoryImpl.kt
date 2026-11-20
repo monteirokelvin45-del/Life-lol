@@ -2,6 +2,7 @@ package com.lifeos.app.data
 
 import com.lifeos.core.database.dao.LifeOsDao
 import com.lifeos.core.database.entity.BookEntity
+import com.lifeos.core.database.entity.BookQuoteEntity
 import com.lifeos.core.database.entity.ExerciseEntity
 import com.lifeos.core.database.entity.FinancialRecordEntity
 import com.lifeos.core.database.entity.HabitEntity
@@ -11,11 +12,13 @@ import com.lifeos.core.database.entity.WorkoutRoutineEntity
 import com.lifeos.core.database.model.HabitWithLogs
 import com.lifeos.core.database.model.WorkoutRoutineWithExercises
 import com.lifeos.core.domain.algorithm.BalanceWheelCalculator
+import com.lifeos.core.domain.algorithm.CrossDomainInsightCalculator
 import com.lifeos.core.domain.algorithm.EbbinghausScheduler
 import com.lifeos.core.domain.algorithm.StreakAndHeatmapCalculator
 import com.lifeos.core.domain.model.AiExtractedPlanPayload
 import com.lifeos.core.domain.model.BalanceWheelScore
 import com.lifeos.core.domain.model.BookDomainModel
+import com.lifeos.core.domain.model.BookQuoteDomainModel
 import com.lifeos.core.domain.model.CategoryExpenseSlice
 import com.lifeos.core.domain.model.DailyBurnPoint
 import com.lifeos.core.domain.model.ExerciseDomainModel
@@ -27,6 +30,7 @@ import com.lifeos.core.domain.model.StudyTopicDomainModel
 import com.lifeos.core.domain.model.WorkoutRoutineDomainModel
 import com.lifeos.core.domain.repository.LifeOsRepository
 import com.lifeos.core.system.alarm.SystemAlarmScheduler
+import com.lifeos.core.system.calendar.CalendarSyncManager
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
@@ -46,7 +50,8 @@ import kotlin.math.roundToInt
 @Singleton
 class LifeOsRepositoryImpl @Inject constructor(
     private val dao: LifeOsDao,
-    private val alarmScheduler: SystemAlarmScheduler
+    private val alarmScheduler: SystemAlarmScheduler,
+    private val calendarSyncManager: CalendarSyncManager
 ) : LifeOsRepository {
 
     private val shortDateFormatter = DateTimeFormatter.ofPattern("dd MMM", Locale("pt", "MZ"))
@@ -103,16 +108,24 @@ class LifeOsRepositoryImpl @Inject constructor(
         val prevMonthStart = prevMonth.withDayOfMonth(1)
         val prevMonthEnd = prevMonth.withDayOfMonth(prevMonth.lengthOfMonth())
         val todayEpoch = today.toEpochDay()
+        val last30StartEpoch = today.minusDays(30).toEpochDay()
 
-        return combine(
+        val financeBundleFlow = combine(
             dao.observeCashflowSummary(currentMonthStart.toEpochDay(), currentMonthEnd.toEpochDay()),
             dao.observeCategoryExpenses(currentMonthStart.toEpochDay(), currentMonthEnd.toEpochDay()),
             dao.observeDailyExpenseBurn(currentMonthStart.toEpochDay(), currentMonthEnd.toEpochDay()),
             dao.observeDailyExpenseBurn(prevMonthStart.toEpochDay(), prevMonthEnd.toEpochDay()),
             dao.getAllTransactions()
         ) { summary, categories, currentDailyBurn, prevDailyBurn, allTransactions ->
-            val totalExp = summary.totalExpense.coerceAtLeast(0.0)
-            val slices = categories.map { tuple ->
+            FinanceRawBundle(summary, categories, currentDailyBurn, prevDailyBurn, allTransactions)
+        }
+
+        return combine(
+            financeBundleFlow,
+            dao.getHabitLogsInWindow(last30StartEpoch, todayEpoch)
+        ) { fb, logs30d ->
+            val totalExp = fb.summary.totalExpense.coerceAtLeast(0.0)
+            val slices = fb.categories.map { tuple ->
                 CategoryExpenseSlice(
                     category = tuple.category,
                     totalAmount = tuple.totalAmount,
@@ -124,10 +137,10 @@ class LifeOsRepositoryImpl @Inject constructor(
                 )
             }
 
-            val currentByDayOfMonth = currentDailyBurn.associate {
+            val currentByDayOfMonth = fb.currentDailyBurn.associate {
                 LocalDate.ofEpochDay(it.epochDay).dayOfMonth to it.dailyTotal
             }
-            val prevByDayOfMonth = prevDailyBurn.associate {
+            val prevByDayOfMonth = fb.prevDailyBurn.associate {
                 LocalDate.ofEpochDay(it.epochDay).dayOfMonth to it.dailyTotal
             }
 
@@ -146,21 +159,39 @@ class LifeOsRepositoryImpl @Inject constructor(
                 )
             }
 
-            val spentToday = allTransactions
+            val spentToday = fb.allTransactions
                 .filter { it.type == FinancialRecordEntity.TYPE_EXPENSE && it.epochDay == todayEpoch }
                 .sumOf { it.amount }
 
-            val activeCurrency = allTransactions.firstOrNull()?.currencyCode ?: "MZN"
+            val activeTrainingDays = logs30d
+                .filter { it.completed }
+                .map { it.epochDay }
+                .toSet()
+
+            val foodExpensesByDay = fb.allTransactions
+                .filter {
+                    it.type == FinancialRecordEntity.TYPE_EXPENSE &&
+                        it.category.contains("Alimenta", ignoreCase = true)
+                }
+                .groupBy { it.epochDay }
+                .mapValues { (_, list) -> list.sumOf { it.amount } }
+
+            val correlationText = CrossDomainInsightCalculator.buildWorkoutVsFoodSpendingInsight(
+                activeTrainingEpochDays = activeTrainingDays,
+                foodExpensesByEpochDay = foodExpensesByDay
+            )
+
+            val activeCurrency = fb.allTransactions.firstOrNull()?.currencyCode ?: "MZN"
 
             FinancialOverviewModel(
-                totalIncomeMonth = summary.totalIncome,
-                totalExpenseMonth = summary.totalExpense,
-                netBalanceMonth = summary.netBalance,
+                totalIncomeMonth = fb.summary.totalIncome,
+                totalExpenseMonth = fb.summary.totalExpense,
+                netBalanceMonth = fb.summary.netBalance,
                 spentToday = spentToday,
                 currencyCode = activeCurrency,
                 categorySlices = slices,
                 burnMatrixPoints = burnPoints,
-                recentTransactions = allTransactions.take(25).map { tx ->
+                recentTransactions = fb.allTransactions.take(25).map { tx ->
                     FinancialTransactionModel(
                         id = tx.id,
                         amount = tx.amount,
@@ -172,12 +203,14 @@ class LifeOsRepositoryImpl @Inject constructor(
                         currencyCode = tx.currencyCode,
                         paymentMethod = tx.paymentMethod
                     )
-                }
+                },
+                behavioralCorrelationInsight = correlationText
             )
         }
     }
 
     override fun observeActiveBooks(): Flow<List<BookDomainModel>> {
+        val today = LocalDate.now()
         return dao.getActiveBooks().map { books ->
             books.map { b ->
                 BookDomainModel(
@@ -191,7 +224,37 @@ class LifeOsRepositoryImpl @Inject constructor(
                     pagesReadToday = b.pagesReadToday,
                     progressFraction = b.progressFraction,
                     estimatedHoursRemaining = b.estimatedHoursRemaining,
-                    status = b.status
+                    status = b.status,
+                    projectedFinishSummary = CrossDomainInsightCalculator.buildBookCompletionProjection(
+                        currentPage = b.currentPage,
+                        totalPages = b.totalPages,
+                        pagesPerHour = b.pagesPerHour,
+                        dailyGoalPages = b.dailyGoalPages,
+                        today = today
+                    )
+                )
+            }
+        }
+    }
+
+    override fun observeBookQuotes(): Flow<List<BookQuoteDomainModel>> {
+        return combine(
+            dao.getAllBookQuotes(),
+            dao.getAllBooks()
+        ) { quotes, books ->
+            val titlesById = books.associate { it.id to it.title }
+            quotes.map { q ->
+                val dateStr = Instant.ofEpochMilli(q.capturedAtMillis)
+                    .atZone(ZoneId.systemDefault())
+                    .toLocalDate()
+                    .format(shortDateFormatter)
+                BookQuoteDomainModel(
+                    id = q.id,
+                    bookId = q.bookId,
+                    bookTitle = titlesById[q.bookId] ?: "Livro Físico",
+                    quoteText = q.quoteText,
+                    pageNumber = q.pageNumber,
+                    formattedDate = dateStr
                 )
             }
         }
@@ -324,12 +387,14 @@ class LifeOsRepositoryImpl @Inject constructor(
     override suspend fun completeExerciseSet(
         exerciseId: Long,
         newCompletedSets: Int,
-        date: LocalDate
+        date: LocalDate,
+        weightKg: Float
     ) {
         dao.updateExerciseProgress(
             exerciseId = exerciseId,
             completedSets = newCompletedSets.coerceAtLeast(0),
-            epochDay = date.toEpochDay()
+            epochDay = date.toEpochDay(),
+            weightKg = weightKg
         )
     }
 
@@ -355,9 +420,9 @@ class LifeOsRepositoryImpl @Inject constructor(
         )
         alarmScheduler.scheduleExact(
             requestCode = alarmCode,
-            title = "Revisão Ebbinghaus · $subject",
-            message = "Estágio 1d: recupere ativamente '$topic' antes do decaimento sináptico.",
-            dateTime = nextReview.atTime(LocalTime.of(7, 30))
+            title = "07:00 · Revisão Ebbinghaus ($subject)",
+            message = "Hoje você precisa revisar '$topic' (Revisão de 1 dia — Curva de Ebbinghaus).",
+            dateTime = nextReview.atTime(LocalTime.of(7, 0))
         )
         return id
     }
@@ -374,6 +439,7 @@ class LifeOsRepositoryImpl @Inject constructor(
             EbbinghausScheduler.resetToFirstStage(today)
         }
         val alarmCode = current.alarmRequestCode ?: (topicId.toInt() + 10_000)
+        val intervalDays = EbbinghausScheduler.STAGE_INTERVALS.getOrElse(nextStage) { 1 }
 
         dao.updateStudyTopic(
             current.copy(
@@ -387,9 +453,9 @@ class LifeOsRepositoryImpl @Inject constructor(
 
         alarmScheduler.scheduleExact(
             requestCode = alarmCode,
-            title = "Revisão Ebbinghaus · ${current.subject}",
-            message = "Hora de revisar '${current.topic}' (Estágio ${nextStage + 1}).",
-            dateTime = nextDate.atTime(LocalTime.of(7, 30))
+            title = "07:00 · Revisão Ebbinghaus (${current.subject})",
+            message = "Hoje você precisa revisar '${current.topic}' (Revisão de $intervalDays dias).",
+            dateTime = nextDate.atTime(LocalTime.of(7, 0))
         )
     }
 
@@ -466,11 +532,27 @@ class LifeOsRepositoryImpl @Inject constructor(
         )
     }
 
+    override suspend fun saveBookQuote(
+        bookId: Long,
+        quoteText: String,
+        pageNumber: Int
+    ) {
+        if (quoteText.isBlank()) return
+        dao.insertBookQuote(
+            BookQuoteEntity(
+                bookId = bookId,
+                quoteText = quoteText.trim(),
+                pageNumber = pageNumber.coerceAtLeast(0)
+            )
+        )
+    }
+
     override suspend fun ingestExtractedPlan(
         plan: AiExtractedPlanPayload,
         today: LocalDate
     ) {
-        val tomorrowEpoch = today.plusDays(1).toEpochDay()
+        val tomorrow = today.plusDays(1)
+        val tomorrowEpoch = tomorrow.toEpochDay()
         val nowMillis = System.currentTimeMillis()
 
         val habitEntities = plan.detectedHabits.map { h ->
@@ -526,6 +608,49 @@ class LifeOsRepositoryImpl @Inject constructor(
             studyTopics = studyEntities,
             financialRecords = financeEntities
         )
+
+        // Agenda alarmes exatos de Ebbinghaus às 07:00 e o Fechamento da Roda às 22:00
+        studyEntities.forEach { st ->
+            st.alarmRequestCode?.let { code ->
+                alarmScheduler.scheduleExact(
+                    requestCode = code,
+                    title = "07:00 · Revisão Ebbinghaus (${st.subject})",
+                    message = "Hoje você precisa revisar '${st.topic}' (Revisão de 1 dia).",
+                    dateTime = tomorrow.atTime(LocalTime.of(7, 0))
+                )
+            }
+        }
+
+        alarmScheduler.scheduleExact(
+            requestCode = NIGHT_BALANCE_WHEEL_ALARM_CODE,
+            title = "22:00 · Fechamento da Roda da Vida",
+            message = "Hora de fechar a Roda, auditar o fluxo do dia e manter seu Streak aceso!",
+            dateTime = today.atTime(LocalTime.of(22, 0)).let {
+                if (it.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli() <= nowMillis) {
+                    it.plusDays(1)
+                } else {
+                    it
+                }
+            }
+        )
+
+        // Se permissão de calendário já estiver ativa, reserva os treinos automaticamente às 18:00
+        if (calendarSyncManager.hasCalendarWritePermission()) {
+            workoutPairs.forEach { (routine, exList) ->
+                val daysDiff = ((routine.dayOfWeek - today.dayOfWeek.value) + 7) % 7
+                val targetDate = today.plusDays(daysDiff.toLong())
+                val startMillis = targetDate.atTime(18, 0)
+                    .atZone(ZoneId.systemDefault())
+                    .toInstant()
+                    .toEpochMilli()
+                calendarSyncManager.createEvent(
+                    title = "Life OS · ${routine.name}",
+                    description = exList.joinToString("\n") { "• ${it.name}: ${it.targetSets}x${it.targetReps}" },
+                    startEpochMillis = startMillis,
+                    endEpochMillis = startMillis + 50 * 60_000L
+                )
+            }
+        }
     }
 
     override suspend fun seedInitialShowcaseDataIfEmpty(today: LocalDate) {
@@ -534,111 +659,120 @@ class LifeOsRepositoryImpl @Inject constructor(
 
         val h1 = dao.insertHabit(
             HabitEntity(
-                name = "Calistenia & Barra Fixa",
-                description = "Força relativa, tração escapular e core",
+                name = "Barra Fixa & Calistenia",
+                description = "Força relativa e tração escapular às 18h",
                 category = HabitEntity.CATEGORY_HEALTH,
                 hexColor = "#10E05B",
                 iconKey = "fitness",
                 targetDaysMask = 0b0011111, // Seg a Sex
-                currentStreak = 12,
-                longestStreak = 18,
+                currentStreak = 33,
+                longestStreak = 33,
                 createdAtEpochDay = today.minusDays(45).toEpochDay()
             )
         )
         val h2 = dao.insertHabit(
             HabitEntity(
-                name = "Revisão Ativa Ebbinghaus",
-                description = "Blocos cognitivos matinais sem distração",
-                category = HabitEntity.CATEGORY_STUDY,
-                hexColor = "#8B5CF6",
-                iconKey = "study",
+                name = "Hidratação 3L de Água",
+                description = "3 litros distribuídos entre 07h e 20h",
+                category = HabitEntity.CATEGORY_HEALTH,
+                hexColor = "#00E5FF",
+                iconKey = "water",
                 targetDaysMask = 127,
-                currentStreak = 8,
-                longestStreak = 14,
+                currentStreak = 19,
+                longestStreak = 24,
                 createdAtEpochDay = today.minusDays(40).toEpochDay()
             )
         )
         val h3 = dao.insertHabit(
             HabitEntity(
-                name = "Auditoria Financeira Noturna",
-                description = "Zero gastos invisíveis antes de dormir",
-                category = HabitEntity.CATEGORY_FINANCE,
-                hexColor = "#00E5FF",
-                iconKey = "wallet",
+                name = "Leitura Matinal Ativa",
+                description = "15 a 20 páginas com cronômetro antes das redes sociais",
+                category = HabitEntity.CATEGORY_STUDY,
+                hexColor = "#8B5CF6",
+                iconKey = "study",
                 targetDaysMask = 127,
-                currentStreak = 6,
-                longestStreak = 11,
+                currentStreak = 14,
+                longestStreak = 21,
                 createdAtEpochDay = today.minusDays(30).toEpochDay()
             )
         )
 
-        // Popula histórico realista de 35 dias para os Micro-Heatmaps em Canvas
         for (offset in 35 downTo 1) {
             val day = today.minusDays(offset.toLong())
             val epoch = day.toEpochDay()
-            val logMillis = day.atTime(7, 45).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+            val logMillis = day.atTime(7, 30).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
             if (offset % 4 != 0) {
-                dao.insertHabitLog(HabitLogEntity(habitId = h1, epochDay = epoch, completed = true, loggedAtMillis = logMillis))
+                dao.insertHabitLog(HabitLogEntity(habitId = h1, epochDay = epoch, completed = true, loggedAtMillis = logMillis + 37_800_000L))
             }
             if (offset % 3 != 0) {
-                dao.insertHabitLog(HabitLogEntity(habitId = h2, epochDay = epoch, completed = true, loggedAtMillis = logMillis + 3_600_000L))
+                dao.insertHabitLog(HabitLogEntity(habitId = h2, epochDay = epoch, completed = true, loggedAtMillis = logMillis + 18_000_000L))
             }
             if (offset % 5 != 0) {
-                dao.insertHabitLog(HabitLogEntity(habitId = h3, epochDay = epoch, completed = true, loggedAtMillis = logMillis + 46_800_000L))
+                dao.insertHabitLog(HabitLogEntity(habitId = h3, epochDay = epoch, completed = true, loggedAtMillis = logMillis))
             }
         }
 
-        // Rotina do dia atual para demonstração imediata
         val routineId = dao.insertWorkoutRoutine(
             WorkoutRoutineEntity(
-                name = "Costas, Barra Fixa & Core",
+                name = "Costas & Bíceps (Calistenia)",
                 dayOfWeek = today.dayOfWeek.value,
                 estimatedDurationMinutes = 50
             )
         )
         dao.insertExercises(
             listOf(
-                ExerciseEntity(routineId = routineId, name = "Barra Fixa Pronada Estrita", targetSets = 4, targetReps = 10, restSeconds = 90, orderIndex = 0, completedSetsToday = 2, lastCompletedEpochDay = today.toEpochDay()),
-                ExerciseEntity(routineId = routineId, name = "Paralelas (Dips Profundos)", targetSets = 4, targetReps = 12, restSeconds = 90, orderIndex = 1, completedSetsToday = 4, lastCompletedEpochDay = today.toEpochDay()),
+                ExerciseEntity(routineId = routineId, name = "Barra Fixa Pronada", targetSets = 4, targetReps = 10, restSeconds = 90, orderIndex = 0, completedSetsToday = 2, lastCompletedEpochDay = today.toEpochDay(), lastWeightKg = 10f),
+                ExerciseEntity(routineId = routineId, name = "Paralelas (Dips Profundos)", targetSets = 4, targetReps = 12, restSeconds = 90, orderIndex = 1, completedSetsToday = 4, lastCompletedEpochDay = today.toEpochDay(), lastWeightKg = 12f),
                 ExerciseEntity(routineId = routineId, name = "Remada Australiana", targetSets = 3, targetReps = 15, restSeconds = 75, orderIndex = 2),
-                ExerciseEntity(routineId = routineId, name = "L-Sit Isométrico", targetSets = 4, targetReps = 20, restSeconds = 60, orderIndex = 3)
+                ExerciseEntity(routineId = routineId, name = "Chin-ups Supinados", targetSets = 3, targetReps = 10, restSeconds = 90, orderIndex = 3)
             )
         )
 
-        // Tópicos de Estudo Ebbinghaus
         dao.insertStudyTopics(
             listOf(
+                StudyTopicEntity(subject = "Cálculo Integral", topic = "Integração por Partes & Substituição Trigonométrica", stage = 1, nextReviewEpochDay = today.toEpochDay(), reviewCount = 2),
                 StudyTopicEntity(subject = "Arquitetura Android", topic = "Kotlin Coroutines, StateFlow & UDF", stage = 2, nextReviewEpochDay = today.toEpochDay(), reviewCount = 3),
-                StudyTopicEntity(subject = "Bancos de Dados", topic = "SQLCipher AES-256 & Índices B-Tree no Room", stage = 1, nextReviewEpochDay = today.toEpochDay(), reviewCount = 2),
-                StudyTopicEntity(subject = "Neurociência", topic = "Consolidação Sináptica na Curva de Ebbinghaus", stage = 3, nextReviewEpochDay = today.plusDays(4).toEpochDay(), reviewCount = 4)
+                StudyTopicEntity(subject = "Bancos de Dados", topic = "SQLCipher AES-256 & Índices B-Tree no Room", stage = 3, nextReviewEpochDay = today.plusDays(4).toEpochDay(), reviewCount = 4)
             )
         )
 
-        // Livro ativo
-        dao.insertBook(
+        val bookId = dao.insertBookAndReturnIdFallback(
             BookEntity(
-                title = "Clean Architecture",
-                author = "Robert C. Martin",
-                totalPages = 432,
-                currentPage = 214,
-                pagesPerHour = 28f,
-                dailyGoalPages = 20,
-                pagesReadToday = 16,
+                title = "Hábitos Atômicos",
+                author = "James Clear",
+                totalPages = 320,
+                currentPage = 45,
+                pagesPerHour = 42f,
+                dailyGoalPages = 15,
+                pagesReadToday = 15,
                 lastReadEpochDay = today.toEpochDay()
             )
         )
+        dao.insertBookQuote(
+            BookQuoteEntity(
+                bookId = bookId,
+                quoteText = "Você não se eleva ao nível das suas metas; você cai ao nível dos seus sistemas.",
+                pageNumber = 43
+            )
+        )
 
-        // Fluxo de caixa realista (MZN)
         val baseMillis = System.currentTimeMillis()
         dao.insertTransactions(
             listOf(
-                FinancialRecordEntity(amount = 65_000.0, type = "INCOME", category = "Salário & Engenharia", timestamp = baseMillis - 86_400_000L * 5, epochDay = today.minusDays(5).toEpochDay(), paymentMethod = "Transferência"),
-                FinancialRecordEntity(amount = 18_000.0, type = "EXPENSE", category = "Moradia", timestamp = baseMillis - 86_400_000L * 4, epochDay = today.minusDays(4).toEpochDay(), paymentMethod = "Transferência"),
-                FinancialRecordEntity(amount = 6_400.0, type = "EXPENSE", category = "Nutrição & Proteína", timestamp = baseMillis - 86_400_000L * 2, epochDay = today.minusDays(2).toEpochDay(), paymentMethod = "M-Pesa"),
+                FinancialRecordEntity(amount = 65_000.0, type = "INCOME", category = "Salário & Engenharia", timestamp = baseMillis - 86_400_000L * 6, epochDay = today.minusDays(6).toEpochDay(), paymentMethod = "Transferência"),
+                FinancialRecordEntity(amount = 18_000.0, type = "EXPENSE", category = "Moradia", timestamp = baseMillis - 86_400_000L * 5, epochDay = today.minusDays(5).toEpochDay(), paymentMethod = "Transferência"),
+                // Dia sem treino (offset 4 -> 4 % 4 == 0) com gasto maior em comida rápida para evidenciar a correlação real!
+                FinancialRecordEntity(amount = 1_450.0, type = "EXPENSE", category = "Alimentação", timestamp = baseMillis - 86_400_000L * 4, epochDay = today.minusDays(4).toEpochDay(), note = "Delivery noturno sem treino", paymentMethod = "Cartão"),
+                FinancialRecordEntity(amount = 980.0, type = "EXPENSE", category = "Alimentação", timestamp = baseMillis - 86_400_000L * 2, epochDay = today.minusDays(2).toEpochDay(), note = "Almoço limpo pós-treino", paymentMethod = "M-Pesa"),
                 FinancialRecordEntity(amount = 2_850.0, type = "EXPENSE", category = "Livros & Educação", timestamp = baseMillis - 86_400_000L, epochDay = today.minusDays(1).toEpochDay(), paymentMethod = "e-Mola"),
-                FinancialRecordEntity(amount = 950.0, type = "EXPENSE", category = "Alimentação", timestamp = baseMillis, epochDay = today.toEpochDay(), note = "Almoço pós-treino", paymentMethod = "M-Pesa")
+                FinancialRecordEntity(amount = 920.0, type = "EXPENSE", category = "Alimentação", timestamp = baseMillis, epochDay = today.toEpochDay(), note = "Almoço executivo", paymentMethod = "Débito")
             )
         )
+    }
+
+    private suspend fun LifeOsDao.insertBookAndReturnIdFallback(book: BookEntity): Long {
+        insertBook(book)
+        return getAllBooks().first().firstOrNull()?.id ?: 1L
     }
 
     private fun mapHabitWithLogs(
@@ -735,7 +869,8 @@ class LifeOsRepositoryImpl @Inject constructor(
                     targetReps = ex.targetReps,
                     restSeconds = ex.restSeconds,
                     orderIndex = ex.orderIndex,
-                    completedSetsToday = ex.completedSetsToday
+                    completedSetsToday = ex.completedSetsToday,
+                    lastWeightKg = ex.lastWeightKg
                 )
             }
         )
@@ -763,6 +898,14 @@ class LifeOsRepositoryImpl @Inject constructor(
         )
     }
 
+    private data class FinanceRawBundle(
+        val summary: com.lifeos.core.database.model.CashflowSummaryTuple,
+        val categories: List<com.lifeos.core.database.model.CategoryExpenseTuple>,
+        val currentDailyBurn: List<com.lifeos.core.database.model.DailyExpenseTuple>,
+        val prevDailyBurn: List<com.lifeos.core.database.model.DailyExpenseTuple>,
+        val allTransactions: List<FinancialRecordEntity>
+    )
+
     private data class MindAndFinanceSnapshot(
         val reviewedCount: Int,
         val dueCount: Int,
@@ -771,4 +914,8 @@ class LifeOsRepositoryImpl @Inject constructor(
         val income: Double,
         val expenses: Double
     )
+
+    companion object {
+        private const val NIGHT_BALANCE_WHEEL_ALARM_CODE = 99_220
+    }
 }

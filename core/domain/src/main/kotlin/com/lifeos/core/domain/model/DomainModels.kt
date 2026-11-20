@@ -69,7 +69,8 @@ data class ExerciseDomainModel(
     val targetReps: Int,
     val restSeconds: Int,
     val orderIndex: Int,
-    val completedSetsToday: Int
+    val completedSetsToday: Int,
+    val lastWeightKg: Float = 0f
 ) {
     val isCompletedToday: Boolean
         get() = completedSetsToday >= targetSets && targetSets > 0
@@ -134,7 +135,8 @@ data class FinancialOverviewModel(
     val currencyCode: String,
     val categorySlices: List<CategoryExpenseSlice>,
     val burnMatrixPoints: List<DailyBurnPoint>,
-    val recentTransactions: List<FinancialTransactionModel>
+    val recentTransactions: List<FinancialTransactionModel>,
+    val behavioralCorrelationInsight: String = ""
 )
 
 data class BookDomainModel(
@@ -148,7 +150,23 @@ data class BookDomainModel(
     val pagesReadToday: Int,
     val progressFraction: Float,
     val estimatedHoursRemaining: Float,
-    val status: String
+    val status: String,
+    val projectedFinishSummary: String = ""
+) {
+    val morningTargetRangeLabel: String
+        get() {
+            val nextTargetPage = (currentPage + dailyGoalPages).coerceAtMost(totalPages)
+            return "Meta matinal: $dailyGoalPages páginas (da pág. $currentPage até $nextTargetPage)"
+        }
+}
+
+data class BookQuoteDomainModel(
+    val id: Long,
+    val bookId: Long,
+    val bookTitle: String,
+    val quoteText: String,
+    val pageNumber: Int,
+    val formattedDate: String
 )
 
 /**

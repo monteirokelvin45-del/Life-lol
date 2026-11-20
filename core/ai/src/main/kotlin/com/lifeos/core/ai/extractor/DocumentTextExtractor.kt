@@ -143,6 +143,15 @@ class DocumentTextExtractor @Inject constructor(
         }
     }
 
+    suspend fun extractTextFromBitmap(bitmap: Bitmap): String = withContext(Dispatchers.IO) {
+        val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+        try {
+            recognizer.process(InputImage.fromBitmap(bitmap, 0)).await().text.trim()
+        } finally {
+            recognizer.close()
+        }
+    }
+
     private suspend fun extractFromImage(uri: Uri): String {
         val bitmap = context.contentResolver.openInputStream(uri)?.use { stream ->
             BitmapFactory.decodeStream(stream)

@@ -199,8 +199,13 @@ fun WorkoutScreen(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(ex.name, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                            val weightBadge = if (ex.lastWeightKg > 0f) {
+                                " · Carga anterior: +${ex.lastWeightKg.toInt()} kg"
+                            } else {
+                                " · Peso corporal"
+                            }
                             Text(
-                                text = "${ex.targetSets} séries × ${ex.targetReps} reps · Descanso ${ex.restSeconds}s",
+                                text = "${ex.targetSets} séries × ${ex.targetReps} reps · Descanso ${ex.restSeconds}s$weightBadge",
                                 color = LifeOsTheme.TextSecondary,
                                 fontSize = 12.sp
                             )

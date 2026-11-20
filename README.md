@@ -80,6 +80,16 @@ Life-lol/
 
 ---
 
+## Jornada Prática de 24 Horas (Atrito Zero)
+
+- **✨ O "Portal Mágico" de IA (Onboarding em <5s):** Recebe arquivos `.pdf`, `.docx`, `.md`, fotos ou textos compartilhados direto do **WhatsApp (`ACTION_SEND`)** ou ditados por **Voz**, estrutura Hábitos, Treinos, Estudos e Finanças em JSON estrito e configura tabelas, alarmes e Google Calendar em 1 toque (**"Confirmar Sistema"**).
+- **🌅 07:00 — Despertar, Ebbinghaus & Leitura Ativa:** Alarme nativo `setExactAndAllowWhileIdle` das revisões `[1, 3, 7, 16, 30 dias]`, **Modo Leitura Ativa** com cronômetro ao vivo (`páginas/hora` + previsão do dia da semana de conclusão) e **Scanner OCR pela Câmera** para salvar citações de livros físicos em `book_quotes`.
+- **☀️ 14:00 — Finanças em 2 Segundos & Inteligência Cruzada:** Barra relâmpago por texto ou voz (*"Almoço 38 débito"* → categorizado automaticamente em *Alimentação*), cruzamento comportamental real (*Treino × Gastos em Alimentação*) e serviço **Pomodoro 25m/50m** na tela de bloqueio.
+- **🏋️ 18:00 — Fisiologia & Descanso Tátil:** Mutação automática da Home para o treino do dia (séries, repetições e `lastWeightKg`), cronômetro Foreground de 90s na tela bloqueada com **vibração tátil dupla + bip discreto** ao zerar e bloqueio automático no Google Calendar.
+- **🌙 22:00 — Fechamento da Roda da Vida & Widget Interativo:** Auditoria noturna da **Roda do Equilíbrio (0–10)** com celebração de *Streak* e **Widget Glance 4x2** na tela inicial do Android com bolinhas `S..D` e check-in direto (`ActionCallback`) sem abrir o app.
+
+---
+
 ## Como Compilar e Executar
 
 ### 1. Android Studio (Hedgehog / Iguana / Jellyfish ou superior)

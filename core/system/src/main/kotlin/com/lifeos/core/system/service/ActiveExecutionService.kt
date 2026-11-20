@@ -6,8 +6,13 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.media.AudioManager
+import android.media.ToneGenerator
 import android.os.Build
 import android.os.IBinder
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.lifeos.core.system.notification.LifeOsNotificationChannels
@@ -46,7 +51,8 @@ data class ActiveTimerSnapshot(
 
 /**
  * Serviço em Primeiro Plano (`foregroundServiceType="specialUse"`) para cronômetros
- * ininterruptos de descanso de calistenia e blocos Pomodoro de foco (Pilar 3).
+ * ininterruptos de descanso de calistenia (90s) e blocos Pomodoro (25m / 50m) na tela de bloqueio,
+ * com vibração tátil dupla e bip acústico discreto ao zerar.
  */
 class ActiveExecutionService : Service() {
 
@@ -94,10 +100,52 @@ class ActiveExecutionService : Service() {
                 manager.notify(FOREGROUND_NOTIFICATION_ID, buildNotification(label, remaining))
                 delay(1_000L)
             }
+
+            triggerCompletionCue(label, manager)
+
             _timerState.value = ActiveTimerSnapshot(isRunning = false)
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
         }
+    }
+
+    private fun triggerCompletionCue(label: String, manager: NotificationManager) {
+        // 1. Vibração tátil dupla (140ms pulso - 90ms pausa - 180ms pulso)
+        runCatching {
+            val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val vm = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+                vm.defaultVibrator
+            } else {
+                @Suppress("DEPRECATION")
+                getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+            }
+            if (vibrator.hasVibrator()) {
+                vibrator.vibrate(
+                    VibrationEffect.createWaveform(longArrayOf(0L, 140L, 90L, 180L), -1)
+                )
+            }
+        }
+
+        // 2. Bip sonoro discreto
+        runCatching {
+            val toneGen = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 75)
+            toneGen.startTone(ToneGenerator.TONE_PROP_BEEP2, 240)
+        }
+
+        // 3. Alerta de retomada imediata
+        val completionText = if (label.contains("Pomodoro", ignoreCase = true)) {
+            "Bloco de foco profundo concluído! Levante-se e hidrate-se."
+        } else {
+            "Hora da próxima série! Mantenha a cadência do treino."
+        }
+        val doneNotification = NotificationCompat.Builder(this, LifeOsNotificationChannels.CHANNEL_EXACT_ALARMS)
+            .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
+            .setContentTitle("Life OS · $label Finalizado")
+            .setContentText(completionText)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .build()
+        manager.notify(COMPLETION_NOTIFICATION_ID, doneNotification)
     }
 
     private fun stopTimerAndSelf() {
@@ -115,9 +163,10 @@ class ActiveExecutionService : Service() {
         return NotificationCompat.Builder(this, LifeOsNotificationChannels.CHANNEL_ACTIVE_EXECUTION)
             .setSmallIcon(android.R.drawable.ic_media_play)
             .setContentTitle("Life OS · $label")
-            .setContentText("Tempo restante: $formatted")
+            .setContentText("Contagem na tela de bloqueio: $formatted")
             .setOngoing(true)
             .setOnlyAlertOnce(true)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .build()
     }
 
@@ -133,6 +182,7 @@ class ActiveExecutionService : Service() {
         private const val EXTRA_DURATION_SECONDS = "EXTRA_DURATION_SECONDS"
         private const val EXTRA_LABEL = "EXTRA_LABEL"
         private const val FOREGROUND_NOTIFICATION_ID = 4202
+        private const val COMPLETION_NOTIFICATION_ID = 4203
 
         private val _timerState = MutableStateFlow(ActiveTimerSnapshot())
         val timerState: StateFlow<ActiveTimerSnapshot> = _timerState.asStateFlow()

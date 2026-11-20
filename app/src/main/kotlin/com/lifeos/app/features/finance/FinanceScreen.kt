@@ -2,9 +2,14 @@
 
 package com.lifeos.app.features.finance
 
+import android.app.Activity
+import android.content.Intent
+import android.speech.RecognizerIntent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -12,16 +17,22 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Bolt
+import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -33,23 +44,55 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lifeos.ui.components.BentoCard
+import com.lifeos.ui.components.CategorySliceUi
 import com.lifeos.ui.components.SegmentedCategoryBar
 import com.lifeos.ui.components.SpendingBurnMatrix
 import com.lifeos.ui.theme.LifeOsTheme
 import java.util.Locale
 
+private val categoryPalette = listOf(
+    LifeOsTheme.CyanFinance,
+    LifeOsTheme.PurpleStudy,
+    LifeOsTheme.OrangeStreak,
+    LifeOsTheme.GreenHealth,
+    LifeOsTheme.AmberFocus
+)
+
 @Composable
-fun FinanceScreen(
-    viewModel: FinanceViewModel
-) {
+fun FinanceScreen(viewModel: FinanceViewModel) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    var showAddDialog by remember { mutableStateOf(false) }
+    val ov = state.overview
+    var showAddTxDialog by remember { mutableStateOf(false) }
+    var quickInput by remember { mutableStateOf("") }
+
+    val voiceExpenseLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val spoken = result.data
+                ?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+                ?.firstOrNull()
+            if (!spoken.isNullOrBlank()) {
+                viewModel.onIntent(FinanceIntent.SubmitQuickNaturalLanguage(spoken))
+            }
+        }
+    }
+
+    val categorySlicesUi = ov.categorySlices.mapIndexed { idx, s ->
+        CategorySliceUi(
+            label = s.category,
+            amountFormatted = String.format(Locale.US, "%.0f %s", s.totalAmount, ov.currencyCode),
+            fraction = s.fraction,
+            color = categoryPalette[idx % categoryPalette.size]
+        )
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -65,28 +108,118 @@ fun FinanceScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
-                    Text("Carteira & Fluxo", color = Color.White, style = MaterialTheme.typography.headlineMedium)
-                    Text("Controle diário local-first criptografado", color = LifeOsTheme.TextSecondary, fontSize = 12.sp)
+                    Text(
+                        text = "14:00 · GESTÃO ATRITO ZERO (SQLCIPHER AES-256)",
+                        color = LifeOsTheme.CyanFinance,
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                    Text(
+                        text = "Finanças & Caixa",
+                        color = Color.White,
+                        style = MaterialTheme.typography.headlineLarge
+                    )
                 }
                 Button(
-                    onClick = { showAddDialog = true },
+                    onClick = { showAddTxDialog = true },
                     colors = ButtonDefaults.buttonColors(containerColor = LifeOsTheme.CyanFinance)
                 ) {
                     Icon(Icons.Rounded.Add, contentDescription = null, tint = Color.Black)
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Lançar", color = Color.Black, fontWeight = FontWeight.Bold)
+                    Text("Manual", color = Color.Black, fontWeight = FontWeight.Bold)
                 }
             }
         }
 
-        // 1. Wallet Bento Card (Referência 01)
+        // 1. Barra Relâmpago de 2 Segundos ("Almoço 38 débito" por texto ou voz)
+        item {
+            BentoCard(borderColor = LifeOsTheme.CyanFinance.copy(alpha = 0.55f)) {
+                Text(
+                    text = "⚡ Lançamento em 2 Segundos (Texto ou Voz)",
+                    color = LifeOsTheme.CyanFinance,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedTextField(
+                        value = quickInput,
+                        onValueChange = { quickInput = it },
+                        placeholder = { Text("Ex: Almoço 38 débito", fontSize = 13.sp) },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(
+                        onClick = {
+                            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                                putExtra(
+                                    RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                                    RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
+                                )
+                                putExtra(RecognizerIntent.EXTRA_LANGUAGE, "pt-BR")
+                                putExtra(RecognizerIntent.EXTRA_PROMPT, "Fale: Almoço 38 débito...")
+                            }
+                            runCatching { voiceExpenseLauncher.launch(intent) }
+                        },
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(LifeOsTheme.SurfaceElevated)
+                    ) {
+                        Icon(Icons.Rounded.Mic, contentDescription = "Falar gasto", tint = LifeOsTheme.OrangeStreak)
+                    }
+                    IconButton(
+                        onClick = {
+                            if (quickInput.isNotBlank()) {
+                                viewModel.onIntent(FinanceIntent.SubmitQuickNaturalLanguage(quickInput))
+                                quickInput = ""
+                            }
+                        },
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(LifeOsTheme.CyanFinance)
+                    ) {
+                        Icon(Icons.Rounded.Bolt, contentDescription = "Registrar", tint = Color.Black)
+                    }
+                }
+                state.quickFeedback?.let { msg ->
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(msg, color = LifeOsTheme.GreenHealth, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
+
+        // 2. Card de Cruzamento Comportamental (Treino × Gastos em Alimentação)
+        if (ov.behavioralCorrelationInsight.isNotBlank()) {
+            item {
+                BentoCard(borderColor = LifeOsTheme.AmberFocus.copy(alpha = 0.55f)) {
+                    Text(
+                        text = "🧠 INTELIGÊNCIA CRUZADA (TREINO × FINANÇAS)",
+                        color = LifeOsTheme.AmberFocus,
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = ov.behavioralCorrelationInsight,
+                        color = Color.White,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        }
+
+        // 3. Resumo + Barra Segmentada Horizontal (Referência 08)
         item {
             BentoCard {
-                Text("SALDO LÍQUIDO DO MÊS", color = LifeOsTheme.TextSecondary, style = MaterialTheme.typography.labelSmall)
-                Spacer(modifier = Modifier.height(6.dp))
+                Text("SALDO LÍQUIDO MENSAL", color = LifeOsTheme.TextSecondary, style = MaterialTheme.typography.labelSmall)
                 Text(
-                    text = String.format(Locale.US, "%,.2f %s", state.netBalanceMonth, state.currencyCode),
-                    color = Color.White,
+                    text = String.format(Locale.US, "%.2f %s", ov.netBalanceMonth, ov.currencyCode),
+                    color = if (ov.netBalanceMonth >= 0) LifeOsTheme.GreenHealth else LifeOsTheme.CrimsonExpense,
                     fontSize = 30.sp,
                     fontWeight = FontWeight.Black
                 )
@@ -95,116 +228,122 @@ fun FinanceScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text(
-                        text = String.format(Locale.US, "Entradas: +%,.0f", state.totalIncomeMonth),
-                        color = LifeOsTheme.GreenHealth,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Text(
-                        text = String.format(Locale.US, "Saídas: -%,.0f", state.totalExpenseMonth),
-                        color = LifeOsTheme.RedExpense,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-                Spacer(modifier = Modifier.height(14.dp))
-                Text("Distribuição por Categoria", color = LifeOsTheme.TextSecondary, fontSize = 12.sp)
-                Spacer(modifier = Modifier.height(8.dp))
-                SegmentedCategoryBar(
-                    fractions = state.categorySlices.map { it.fraction }
-                )
-                if (state.categorySlices.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = state.categorySlices.take(3).joinToString(" · ") {
-                            "${it.category}: ${(it.fraction * 100).toInt()}%"
-                        },
-                        color = LifeOsTheme.TextSecondary,
-                        fontSize = 11.sp
-                    )
-                }
-            }
-        }
-
-        // 2. Burn Matrix Cumulativa (Referência 03 — `$123 today`)
-        item {
-            BentoCard {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = String.format(Locale.US, "%,.0f %s", state.spentToday, state.currencyCode),
-                        color = Color.White,
-                        fontSize = 34.sp,
-                        fontWeight = FontWeight.Black
-                    )
-                    Text("gasto hoje", color = LifeOsTheme.TextSecondary, fontSize = 13.sp)
-                }
-                Spacer(modifier = Modifier.height(14.dp))
-                SpendingBurnMatrix(
-                    currentMonthCumulative = state.burnMatrixPoints.map { it.currentMonthCumulative },
-                    previousMonthCumulative = state.burnMatrixPoints.map { it.previousMonthCumulative }
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                val ratioText = if (state.totalIncomeMonth > 0 && state.totalExpenseMonth <= state.totalIncomeMonth * 0.8) {
-                    "Ritmo excelente: despesas abaixo de 80% da receita (Score 10/10)"
-                } else {
-                    "Atenção ao teto de 80% da receita para preservar o LifeScore"
-                }
-                Text(ratioText, color = LifeOsTheme.TextSecondary, fontSize = 12.sp)
-            }
-        }
-
-        // 3. Lançamentos Recentes
-        item {
-            Text("Movimentações Recentes", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-        }
-
-        items(state.recentTransactions.size) { idx ->
-            val tx = state.recentTransactions[idx]
-            val isIncome = tx.type == "INCOME"
-            BentoCard {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(tx.category, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                    Column {
+                        Text("Receitas", color = LifeOsTheme.TextSecondary, fontSize = 12.sp)
                         Text(
-                            text = buildString {
-                                append(tx.paymentMethod)
-                                tx.note?.let { append(" · $it") }
-                            },
-                            color = LifeOsTheme.TextSecondary,
-                            fontSize = 12.sp
+                            text = String.format(Locale.US, "+%.2f %s", ov.totalIncomeMonth, ov.currencyCode),
+                            color = LifeOsTheme.GreenHealth,
+                            fontWeight = FontWeight.Bold
                         )
                     }
-                    Text(
-                        text = String.format(
-                            Locale.US,
-                            "%s%,.2f %s",
-                            if (isIncome) "+" else "-",
-                            tx.amount,
-                            tx.currencyCode
-                        ),
-                        color = if (isIncome) LifeOsTheme.GreenHealth else LifeOsTheme.RedExpense,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp
-                    )
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text("Saídas", color = LifeOsTheme.TextSecondary, fontSize = 12.sp)
+                        Text(
+                            text = String.format(Locale.US, "-%.2f %s", ov.totalExpenseMonth, ov.currencyCode),
+                            color = LifeOsTheme.CrimsonExpense,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                if (categorySlicesUi.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    SegmentedCategoryBar(slices = categorySlicesUi)
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        categorySlicesUi.forEach { slice ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(9.dp)
+                                            .clip(CircleShape)
+                                            .background(slice.color)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(slice.label, color = Color.White, fontSize = 13.sp)
+                                }
+                                Text(slice.amountFormatted, color = LifeOsTheme.TextSecondary, fontSize = 13.sp)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 4. Matriz Step-Chart (Referência 10)
+        item {
+            BentoCard {
+                Text("Ritmo de Gastos: Este Mês vs Mês Anterior", color = Color.White, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    text = "Linha degrau sólida = acumulado atual · Pontilhada = mês anterior",
+                    color = LifeOsTheme.TextSecondary,
+                    fontSize = 12.sp
+                )
+                Spacer(modifier = Modifier.height(14.dp))
+                SpendingBurnMatrix(
+                    currentMonthDailyCumulative = ov.burnMatrixPoints
+                        .takeWhile { it.currentMonthCumulative > 0.0 || it.dayOfMonth == 1 }
+                        .map { it.currentMonthCumulative.toFloat() },
+                    previousMonthDailyCumulative = ov.burnMatrixPoints.map { it.previousMonthCumulative.toFloat() }
+                )
+            }
+        }
+
+        // 5. Livro-Razão Recente
+        item {
+            BentoCard {
+                Text("Transações Recentes", color = Color.White, style = MaterialTheme.typography.titleMedium)
+                Spacer(modifier = Modifier.height(10.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    ov.recentTransactions.forEach { tx ->
+                        val isIncome = tx.type == "INCOME"
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(LifeOsTheme.SurfaceElevated)
+                                .padding(horizontal = 14.dp, vertical = 10.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(tx.category, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                                Text(
+                                    text = listOfNotNull(tx.note, tx.paymentMethod).joinToString(" · "),
+                                    color = LifeOsTheme.TextSecondary,
+                                    fontSize = 11.sp
+                                )
+                            }
+                            Text(
+                                text = String.format(
+                                    Locale.US,
+                                    "%s%.2f %s",
+                                    if (isIncome) "+" else "-",
+                                    tx.amount,
+                                    tx.currencyCode
+                                ),
+                                color = if (isIncome) LifeOsTheme.GreenHealth else Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp
+                            )
+                        }
+                    }
                 }
             }
         }
     }
 
-    if (showAddDialog) {
+    if (showAddTxDialog) {
         AddTransactionDialog(
-            onDismiss = { showAddDialog = false },
-            onSave = { amount, type, category, note, method ->
-                showAddDialog = false
-                viewModel.onIntent(FinanceIntent.AddTransaction(amount, type, category, note, method))
+            onDismiss = { showAddTxDialog = false },
+            onConfirm = { amount, type, cat, note, method ->
+                viewModel.onIntent(FinanceIntent.AddTransaction(amount, type, cat, note, method))
+                showAddTxDialog = false
             }
         )
     }
@@ -213,86 +352,69 @@ fun FinanceScreen(
 @Composable
 private fun AddTransactionDialog(
     onDismiss: () -> Unit,
-    onSave: (Double, String, String, String?, String) -> Unit
+    onConfirm: (Double, String, String, String?, String) -> Unit
 ) {
     var amountText by remember { mutableStateOf("") }
-    var type by remember { mutableStateOf("EXPENSE") }
+    var isExpense by remember { mutableStateOf(true) }
     var category by remember { mutableStateOf("Alimentação") }
     var note by remember { mutableStateOf("") }
-    var paymentMethod by remember { mutableStateOf("M-Pesa") }
-
-    val methods = listOf("M-Pesa", "e-Mola", "Cartão", "Transferência", "Numerário")
+    var method by remember { mutableStateOf("Débito") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = LifeOsTheme.SurfaceDark,
-        title = { Text("Novo Lançamento", color = Color.White) },
+        title = { Text("Registrar Fluxo Financeiro", color = Color.White) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(
-                        selected = type == "EXPENSE",
-                        onClick = { type = "EXPENSE" },
-                        label = { Text("Despesa") }
+                        selected = isExpense,
+                        onClick = { isExpense = true },
+                        label = { Text("Saída (Despesa)") }
                     )
                     FilterChip(
-                        selected = type == "INCOME",
-                        onClick = { type = "INCOME" },
-                        label = { Text("Receita") }
+                        selected = !isExpense,
+                        onClick = { isExpense = false },
+                        label = { Text("Entrada (Receita)") }
                     )
                 }
                 OutlinedTextField(
                     value = amountText,
                     onValueChange = { amountText = it },
-                    label = { Text("Valor (MZN)") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    label = { Text("Valor") }
                 )
                 OutlinedTextField(
                     value = category,
                     onValueChange = { category = it },
-                    label = { Text("Categoria") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    label = { Text("Categoria (Ex: Alimentação, Moradia)") }
+                )
+                OutlinedTextField(
+                    value = method,
+                    onValueChange = { method = it },
+                    label = { Text("Método (Débito, M-Pesa, Cartão)") }
                 )
                 OutlinedTextField(
                     value = note,
                     onValueChange = { note = it },
-                    label = { Text("Nota opcional") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    label = { Text("Observação") }
                 )
-                Row(
-                    modifier = Modifier.horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    methods.forEach { method ->
-                        FilterChip(
-                            selected = paymentMethod == method,
-                            onClick = { paymentMethod = method },
-                            label = { Text(method, fontSize = 11.sp) }
-                        )
-                    }
-                }
             }
         },
         confirmButton = {
             Button(
                 onClick = {
-                    val value = amountText.replace(",", ".").toDoubleOrNull() ?: 0.0
-                    if (value > 0.0) {
-                        onSave(value, type, category, note.ifBlank { null }, paymentMethod)
+                    val v = amountText.replace(",", ".").toDoubleOrNull() ?: 0.0
+                    if (v > 0.0) {
+                        onConfirm(v, if (isExpense) "EXPENSE" else "INCOME", category, note, method)
                     }
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = LifeOsTheme.CyanFinance)
             ) {
-                Text("Registrar", color = Color.Black, fontWeight = FontWeight.Bold)
+                Text("Salvar", color = Color.Black, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancelar", color = LifeOsTheme.TextSecondary)
-            }
+            TextButton(onClick = onDismiss) { Text("Cancelar", color = LifeOsTheme.TextSecondary) }
         }
     )
 }

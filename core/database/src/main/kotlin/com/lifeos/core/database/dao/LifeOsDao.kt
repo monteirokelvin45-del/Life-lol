@@ -8,6 +8,7 @@ import androidx.room.Transaction
 import androidx.room.Update
 import androidx.room.Upsert
 import com.lifeos.core.database.entity.BookEntity
+import com.lifeos.core.database.entity.BookQuoteEntity
 import com.lifeos.core.database.entity.ExerciseEntity
 import com.lifeos.core.database.entity.FinancialRecordEntity
 import com.lifeos.core.database.entity.HabitEntity
@@ -139,14 +140,16 @@ interface LifeOsDao {
         """
         UPDATE exercises
         SET completed_sets_today = :completedSets,
-            last_completed_epoch_day = :epochDay
+            last_completed_epoch_day = :epochDay,
+            last_weight_kg = CASE WHEN :weightKg > 0 THEN :weightKg ELSE last_weight_kg END
         WHERE id = :exerciseId
         """
     )
     suspend fun updateExerciseProgress(
         exerciseId: Long,
         completedSets: Int,
-        epochDay: Long
+        epochDay: Long,
+        weightKg: Float = 0f
     )
 
     @Query("DELETE FROM exercises WHERE routine_id = :routineId")
@@ -295,6 +298,15 @@ interface LifeOsDao {
         status: String,
         epochDay: Long
     )
+
+    @Query("SELECT * FROM book_quotes ORDER BY captured_at_millis DESC")
+    fun getAllBookQuotes(): Flow<List<BookQuoteEntity>>
+
+    @Query("SELECT * FROM book_quotes WHERE book_id = :bookId ORDER BY captured_at_millis DESC")
+    fun getQuotesForBook(bookId: Long): Flow<List<BookQuoteEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertBookQuote(quote: BookQuoteEntity): Long
 
     // =========================================================================
     // 6. TRANSAÇÃO ATÔMICA DE INGESTÃO DA IA (PILAR 5.2)

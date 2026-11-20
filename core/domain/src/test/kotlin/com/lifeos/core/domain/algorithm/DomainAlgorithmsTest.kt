@@ -1,6 +1,7 @@
 package com.lifeos.core.domain.algorithm
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
@@ -38,7 +39,7 @@ class DomainAlgorithmsTest {
             pagesReadToday = 25,
             dailyGoalPages = 20,
             totalIncome = 50_000.0,
-            totalExpenses = 30_000.0, // <= 80% income
+            totalExpenses = 30_000.0,
             consistencyRatio14Days = 1.0f
         )
         assertEquals(10.0f, score.overallScore0to10, 0.01f)
@@ -48,7 +49,7 @@ class DomainAlgorithmsTest {
     fun `balance wheel applies deficit penalty when expenses exceed income`() {
         val financeScore = BalanceWheelCalculator.calculateFinanceScore(
             income = 10_000.0,
-            expenses = 12_500.0 // 25% deficit -> 10 - (0.25 * 20) = 5.0
+            expenses = 12_500.0
         )
         assertEquals(5.0f, financeScore, 0.01f)
     }
@@ -64,5 +65,41 @@ class DomainAlgorithmsTest {
         assertEquals(7, matrix.size)
         assertEquals(20, matrix.first().size)
         assertTrue(matrix.flatten().any { it == 1.0f })
+    }
+
+    @Test
+    fun `quick finance nlp parser extracts almoco 38 debito in under 2s frictionless flow`() {
+        val parsed = QuickFinanceNlpParser.parse("Almoço 38 débito")
+        assertNotNull(parsed)
+        assertEquals(38.0, parsed!!.amount, 0.001)
+        assertEquals("EXPENSE", parsed.type)
+        assertEquals("Alimentação", parsed.category)
+        assertEquals("Débito", parsed.paymentMethod)
+    }
+
+    @Test
+    fun `cross domain insight detects higher food spending on non-training days`() {
+        val insight = CrossDomainInsightCalculator.buildWorkoutVsFoodSpendingInsight(
+            activeTrainingEpochDays = setOf(100L, 102L),
+            foodExpensesByEpochDay = mapOf(
+                100L to 50.0,
+                102L to 50.0,
+                101L to 70.0
+            )
+        )
+        assertTrue(insight.contains("40%"))
+    }
+
+    @Test
+    fun `book completion projection computes weekday finish forecast`() {
+        val summary = CrossDomainInsightCalculator.buildBookCompletionProjection(
+            currentPage = 45,
+            totalPages = 105,
+            pagesPerHour = 42f,
+            dailyGoalPages = 15,
+            today = LocalDate.of(2026, 11, 20) // Sexta-feira + 4 dias = Terça-feira
+        )
+        assertTrue(summary.contains("42 páginas/hora"))
+        assertTrue(summary.contains("terça-feira"))
     }
 }

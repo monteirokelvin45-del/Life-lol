@@ -52,5 +52,8 @@ data class ExerciseEntity(
     val completedSetsToday: Int = 0,
 
     @ColumnInfo(name = "last_completed_epoch_day")
-    val lastCompletedEpochDay: Long? = null
+    val lastCompletedEpochDay: Long? = null,
+
+    @ColumnInfo(name = "last_weight_kg")
+    val lastWeightKg: Float = 0f
 )

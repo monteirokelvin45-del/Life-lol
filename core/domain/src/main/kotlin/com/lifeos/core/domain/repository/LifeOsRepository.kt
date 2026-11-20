@@ -3,6 +3,7 @@ package com.lifeos.core.domain.repository
 import com.lifeos.core.domain.model.AiExtractedPlanPayload
 import com.lifeos.core.domain.model.BalanceWheelScore
 import com.lifeos.core.domain.model.BookDomainModel
+import com.lifeos.core.domain.model.BookQuoteDomainModel
 import com.lifeos.core.domain.model.FinancialOverviewModel
 import com.lifeos.core.domain.model.HabitDomainModel
 import com.lifeos.core.domain.model.StudyTopicDomainModel
@@ -26,6 +27,8 @@ interface LifeOsRepository {
 
     fun observeActiveBooks(): Flow<List<BookDomainModel>>
 
+    fun observeBookQuotes(): Flow<List<BookQuoteDomainModel>>
+
     fun observeBalanceWheel(today: LocalDate = LocalDate.now()): Flow<BalanceWheelScore>
 
     suspend fun createHabit(
@@ -45,7 +48,8 @@ interface LifeOsRepository {
     suspend fun completeExerciseSet(
         exerciseId: Long,
         newCompletedSets: Int,
-        date: LocalDate = LocalDate.now()
+        date: LocalDate = LocalDate.now(),
+        weightKg: Float = 0f
     )
 
     suspend fun updateWorkoutCalendarEvent(
@@ -86,6 +90,12 @@ interface LifeOsRepository {
         newCurrentPage: Int,
         sessionMinutes: Int,
         today: LocalDate = LocalDate.now()
+    )
+
+    suspend fun saveBookQuote(
+        bookId: Long,
+        quoteText: String,
+        pageNumber: Int
     )
 
     suspend fun ingestExtractedPlan(

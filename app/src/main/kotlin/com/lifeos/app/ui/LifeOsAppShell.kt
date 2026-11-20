@@ -1,5 +1,6 @@
 package com.lifeos.app.ui
 
+import android.net.Uri
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccountBalanceWallet
@@ -46,7 +47,11 @@ private enum class LifeOsDestination(
 }
 
 @Composable
-fun LifeOsAppShell() {
+fun LifeOsAppShell(
+    incomingSharedUri: Uri? = null,
+    incomingSharedText: String? = null,
+    onConsumedSharedPayload: () -> Unit = {}
+) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route ?: LifeOsDestination.HOME.route
@@ -98,7 +103,12 @@ fun LifeOsAppShell() {
             modifier = Modifier.padding(innerPadding)
         ) {
             composable(LifeOsDestination.HOME.route) {
-                HomeScreen(viewModel = hiltViewModel())
+                HomeScreen(
+                    viewModel = hiltViewModel(),
+                    incomingSharedUri = incomingSharedUri,
+                    incomingSharedText = incomingSharedText,
+                    onConsumedSharedPayload = onConsumedSharedPayload
+                )
             }
             composable(LifeOsDestination.HABITS.route) {
                 HabitsScreen(viewModel = hiltViewModel())

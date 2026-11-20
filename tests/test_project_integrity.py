@@ -43,7 +43,51 @@ def test_zero_xml_screen_layouts_100_percent_compose():
     assert layout_files == [], f"Found forbidden screen XML layouts: {layout_files}"
 
 
-def test_android_manifest_declares_all_pillar_3_permissions_and_components():
+def test_no_nested_block_comments_in_kotlin_sources():
+    for kt_file in list((REPO_ROOT / "core").rglob("*.kt")) + list((REPO_ROOT / "app").rglob("*.kt")):
+        src = kt_file.read_text(encoding="utf-8")
+        depth = 0
+        in_string = False
+        in_line_comment = False
+        i = 0
+        while i < len(src):
+            ch = src[i]
+            nxt = src[i + 1] if i + 1 < len(src) else ""
+            if in_line_comment:
+                if ch == "\n":
+                    in_line_comment = False
+                i += 1
+                continue
+            if depth == 0 and in_string:
+                if ch == "\\" and nxt:
+                    i += 2
+                    continue
+                if ch == '"':
+                    in_string = False
+                i += 1
+                continue
+            if depth == 0 and ch == '"':
+                in_string = True
+                i += 1
+                continue
+            if depth == 0 and ch == "/" and nxt == "/":
+                in_line_comment = True
+                i += 2
+                continue
+            if ch == "/" and nxt == "*":
+                depth += 1
+                assert depth == 1, f"Nested /* comment in {kt_file.relative_to(REPO_ROOT)}"
+                i += 2
+                continue
+            if ch == "*" and nxt == "/" and depth > 0:
+                depth -= 1
+                i += 2
+                continue
+            i += 1
+        assert depth == 0, f"Unclosed block comment in {kt_file.relative_to(REPO_ROOT)}"
+
+
+def test_android_manifest_declares_all_pillar_3_permissions_and_whatsapp_share():
     manifest_path = REPO_ROOT / "app/src/main/AndroidManifest.xml"
     tree = ET.parse(manifest_path)
     root = tree.getroot()
@@ -57,6 +101,7 @@ def test_android_manifest_declares_all_pillar_3_permissions_and_components():
         "android.permission.SCHEDULE_EXACT_ALARM",
         "android.permission.USE_EXACT_ALARM",
         "android.permission.WAKE_LOCK",
+        "android.permission.VIBRATE",
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_SPECIAL_USE",
@@ -69,6 +114,15 @@ def test_android_manifest_declares_all_pillar_3_permissions_and_components():
 
     app_node = root.find("application")
     assert app_node is not None
+    activity = app_node.find("activity")
+    assert activity is not None
+    actions = {
+        act.attrib.get(f"{{{ns['android']}}}name")
+        for flt in activity.findall("intent-filter")
+        for act in flt.findall("action")
+    }
+    assert "android.intent.action.SEND" in actions
+
     receivers = {
         r.attrib.get(f"{{{ns['android']}}}name")
         for r in app_node.findall("receiver")

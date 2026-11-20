@@ -64,6 +64,7 @@ CREATE TABLE exercises (
     order_index INTEGER NOT NULL,
     completed_sets_today INTEGER NOT NULL DEFAULT 0,
     last_completed_epoch_day INTEGER,
+    last_weight_kg REAL NOT NULL DEFAULT 0.0,
     FOREIGN KEY (routine_id) REFERENCES workout_routines (id) ON DELETE CASCADE
 );
 CREATE INDEX index_exercises_routine_id ON exercises (routine_id);
@@ -111,6 +112,17 @@ CREATE TABLE books (
     last_read_epoch_day INTEGER
 );
 CREATE INDEX index_books_status ON books (status);
+
+CREATE TABLE book_quotes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    book_id INTEGER NOT NULL,
+    quote_text TEXT NOT NULL,
+    page_number INTEGER NOT NULL DEFAULT 0,
+    captured_at_millis INTEGER NOT NULL DEFAULT 0,
+    FOREIGN KEY (book_id) REFERENCES books (id) ON DELETE CASCADE
+);
+CREATE INDEX index_book_quotes_book_id ON book_quotes (book_id);
+CREATE INDEX index_book_quotes_captured_at_millis ON book_quotes (captured_at_millis);
 """
 
 
@@ -146,6 +158,7 @@ def test_all_seven_entities_registered_in_life_os_database():
         "StudyTopicEntity::class",
         "FinancialRecordEntity::class",
         "BookEntity::class",
+        "BookQuoteEntity::class",
     ]
     for entity in expected_entities:
         assert entity in db_src, f"Missing {entity} in LifeOsDatabase"

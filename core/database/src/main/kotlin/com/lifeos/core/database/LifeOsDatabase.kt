@@ -8,6 +8,7 @@ import androidx.room.TypeConverters
 import com.lifeos.core.database.converter.LifeOsTypeConverters
 import com.lifeos.core.database.dao.LifeOsDao
 import com.lifeos.core.database.entity.BookEntity
+import com.lifeos.core.database.entity.BookQuoteEntity
 import com.lifeos.core.database.entity.ExerciseEntity
 import com.lifeos.core.database.entity.FinancialRecordEntity
 import com.lifeos.core.database.entity.HabitEntity
@@ -34,7 +35,8 @@ import net.sqlcipher.database.SupportFactory
         ExerciseEntity::class,
         StudyTopicEntity::class,
         FinancialRecordEntity::class,
-        BookEntity::class
+        BookEntity::class,
+        BookQuoteEntity::class
     ],
     version = 1,
     exportSchema = true

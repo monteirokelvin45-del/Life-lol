@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.lifeos.core.ai.engine.StructuredPlanAiEngine
 import com.lifeos.core.ai.extractor.DocumentTextExtractor
 import com.lifeos.core.domain.algorithm.TimeContextResolver
+import com.lifeos.core.domain.model.AiExtractedPlanPayload
 import com.lifeos.core.domain.model.BalanceWheelScore
 import com.lifeos.core.domain.model.BookDomainModel
 import com.lifeos.core.domain.model.FinancialOverviewModel
@@ -40,6 +41,7 @@ data class HomeUiState(
     val activeBooks: List<BookDomainModel> = emptyList(),
     val financialOverview: FinancialOverviewModel? = null,
     val activeTimer: ActiveTimerSnapshot = ActiveTimerSnapshot(),
+    val pendingPlanPreview: AiExtractedPlanPayload? = null,
     val isIngesting: Boolean = false,
     val statusMessage: String? = null
 )
@@ -48,8 +50,10 @@ sealed interface HomeIntent {
     data class SelectTimeContext(val context: TimeOfDayContext) : HomeIntent
     data class ToggleHabit(val habitId: Long) : HomeIntent
     data class ReviewTopic(val topicId: Long) : HomeIntent
-    data class IngestDocumentUri(val uri: Uri) : HomeIntent
-    data class IngestRawText(val text: String) : HomeIntent
+    data class PreviewDocumentUri(val uri: Uri) : HomeIntent
+    data class PreviewRawText(val text: String) : HomeIntent
+    data object ConfirmExtractedSystem : HomeIntent
+    data object CancelPlanPreview : HomeIntent
     data class StartPomodoroFocus(val minutes: Int = 25) : HomeIntent
     data object StopActiveTimer : HomeIntent
     data object DismissMessage : HomeIntent
@@ -67,6 +71,7 @@ class HomeViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val manualTimeContext = MutableStateFlow<TimeOfDayContext?>(null)
+    private val pendingPreviewFlow = MutableStateFlow<AiExtractedPlanPayload?>(null)
     private val isIngestingFlow = MutableStateFlow(false)
     private val messageFlow = MutableStateFlow<String?>(null)
 
@@ -90,13 +95,14 @@ class HomeViewModel @Inject constructor(
         repository.observeFinancialOverview(),
         ActiveExecutionService.timerState,
         manualTimeContext,
-        isIngestingFlow,
-        messageFlow
-    ) { finance, timer, overrideCtx, ingesting, msg ->
+        pendingPreviewFlow,
+        combine(isIngestingFlow, messageFlow) { ing, msg -> ing to msg }
+    ) { finance, timer, overrideCtx, preview, (ingesting, msg) ->
         AuxBundle(
             finance = finance,
             timer = timer,
             timeContext = overrideCtx ?: TimeContextResolver.resolve(),
+            preview = preview,
             isIngesting = ingesting,
             message = msg
         )
@@ -112,6 +118,7 @@ class HomeViewModel @Inject constructor(
             activeBooks = core.books,
             financialOverview = aux.finance,
             activeTimer = aux.timer,
+            pendingPlanPreview = aux.preview,
             isIngesting = aux.isIngesting,
             statusMessage = aux.message
         )
@@ -132,16 +139,22 @@ class HomeViewModel @Inject constructor(
             is HomeIntent.ReviewTopic -> {
                 viewModelScope.launch { completeStudyReviewUseCase(intent.topicId, rememberedWell = true) }
             }
-            is HomeIntent.IngestDocumentUri -> {
-                ingestFromUri(intent.uri)
+            is HomeIntent.PreviewDocumentUri -> {
+                parseUriIntoPortalPreview(intent.uri)
             }
-            is HomeIntent.IngestRawText -> {
-                ingestFromText(intent.text)
+            is HomeIntent.PreviewRawText -> {
+                parseTextIntoPortalPreview(intent.text)
+            }
+            HomeIntent.ConfirmExtractedSystem -> {
+                confirmAndPersistPreview()
+            }
+            HomeIntent.CancelPlanPreview -> {
+                pendingPreviewFlow.value = null
             }
             is HomeIntent.StartPomodoroFocus -> {
                 ActiveExecutionService.startTimer(
                     context = appContext,
-                    label = "Pomodoro Cognitivo (${intent.minutes}m)",
+                    label = "Pomodoro Focado (${intent.minutes}m)",
                     durationSeconds = intent.minutes * 60
                 )
             }
@@ -154,18 +167,13 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    private fun ingestFromUri(uri: Uri) {
+    private fun parseUriIntoPortalPreview(uri: Uri) {
         viewModelScope.launch {
             isIngestingFlow.value = true
             runCatching {
                 val rawText = documentTextExtractor.extractTextFromUri(uri)
                 val plan = aiEngine.extractStructuredPlan(rawText)
-                ingestPlanUseCase(plan)
-                val totalItems = plan.detectedHabits.size +
-                    plan.detectedWorkouts.size +
-                    plan.detectedStudies.size +
-                    plan.detectedFinances.size
-                messageFlow.value = "Plano ingerido com sucesso ($totalItems blocos detectados)."
+                pendingPreviewFlow.value = plan
             }.onFailure { err ->
                 messageFlow.value = "Falha na leitura do arquivo: ${err.localizedMessage ?: "formato inválido"}"
             }
@@ -173,19 +181,33 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    private fun ingestFromText(rawText: String) {
+    private fun parseTextIntoPortalPreview(rawText: String) {
         viewModelScope.launch {
             isIngestingFlow.value = true
             runCatching {
                 val plan = aiEngine.extractStructuredPlan(rawText)
+                pendingPreviewFlow.value = plan
+            }.onFailure { err ->
+                messageFlow.value = "Erro ao interpretar plano: ${err.localizedMessage}"
+            }
+            isIngestingFlow.value = false
+        }
+    }
+
+    private fun confirmAndPersistPreview() {
+        val plan = pendingPreviewFlow.value ?: return
+        viewModelScope.launch {
+            isIngestingFlow.value = true
+            runCatching {
                 ingestPlanUseCase(plan)
                 val totalItems = plan.detectedHabits.size +
                     plan.detectedWorkouts.size +
                     plan.detectedStudies.size +
                     plan.detectedFinances.size
-                messageFlow.value = "Rotina hiper-automatizada criada ($totalItems itens persistidos)."
+                pendingPreviewFlow.value = null
+                messageFlow.value = "Sistema confirmado! $totalItems módulos criados com alarmes e agenda."
             }.onFailure { err ->
-                messageFlow.value = "Erro ao processar texto: ${err.localizedMessage}"
+                messageFlow.value = "Erro ao confirmar sistema: ${err.localizedMessage}"
             }
             isIngestingFlow.value = false
         }
@@ -203,6 +225,7 @@ class HomeViewModel @Inject constructor(
         val finance: FinancialOverviewModel,
         val timer: ActiveTimerSnapshot,
         val timeContext: TimeOfDayContext,
+        val preview: AiExtractedPlanPayload?,
         val isIngesting: Boolean,
         val message: String?
     )
