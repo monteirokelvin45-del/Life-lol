@@ -9,8 +9,10 @@ import androidx.room.Update
 import androidx.room.Upsert
 import com.lifeos.core.database.entity.BookEntity
 import com.lifeos.core.database.entity.BookQuoteEntity
+import com.lifeos.core.database.entity.CommitmentContractEntity
 import com.lifeos.core.database.entity.ExerciseEntity
 import com.lifeos.core.database.entity.FinancialRecordEntity
+import com.lifeos.core.database.entity.GhostSquadMemberEntity
 import com.lifeos.core.database.entity.HabitEntity
 import com.lifeos.core.database.entity.HabitLogEntity
 import com.lifeos.core.database.entity.StudyTopicEntity
@@ -307,6 +309,34 @@ interface LifeOsDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertBookQuote(quote: BookQuoteEntity): Long
+
+    // =========================================================================
+    // 5.5. GAMIFICAÇÃO CIENTÍFICA: ESCUDO ANTI-FALHA, ESQUADRÃO GHOST & ANTI-CHARITY
+    // =========================================================================
+
+    @Query("SELECT * FROM commitment_contracts WHERE is_active = 1 ORDER BY id DESC LIMIT 1")
+    fun observeActiveCommitmentContract(): Flow<CommitmentContractEntity?>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertCommitmentContract(contract: CommitmentContractEntity): Long
+
+    @Query("UPDATE commitment_contracts SET is_active = 0")
+    suspend fun deactivateAllCommitmentContracts()
+
+    @Query("SELECT * FROM ghost_squad_members ORDER BY slot_index ASC LIMIT 3")
+    fun observeGhostSquadMembers(): Flow<List<GhostSquadMemberEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertGhostSquadMembers(members: List<GhostSquadMemberEntity>)
+
+    @Query("SELECT COUNT(*) FROM habit_logs WHERE completed = 1 AND (note IS NULL OR note NOT LIKE '%STREAK_FREEZE%')")
+    fun observeCleanCheckInCount(): Flow<Int>
+
+    @Query("SELECT COUNT(DISTINCT epoch_day) FROM habit_logs WHERE note LIKE '%STREAK_FREEZE%'")
+    fun observeUsedFreezeDaysCount(): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM habit_logs WHERE epoch_day = :epochDay AND note LIKE '%STREAK_FREEZE%'")
+    fun observeFreezeActiveOnDay(epochDay: Long): Flow<Int>
 
     // =========================================================================
     // 6. TRANSAÇÃO ATÔMICA DE INGESTÃO DA IA (PILAR 5.2)

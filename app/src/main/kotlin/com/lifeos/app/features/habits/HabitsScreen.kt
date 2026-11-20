@@ -55,8 +55,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lifeos.core.domain.model.HabitDomainModel
+import com.lifeos.ui.components.AnnualGitHubHeatmap7x52
 import com.lifeos.ui.components.BentoCard
+import com.lifeos.ui.components.CompoundEffectFlameChart
 import com.lifeos.ui.components.HabitMicroHeatmap
+import com.lifeos.ui.components.StreakFreezeShieldBanner
 import com.lifeos.ui.theme.LifeOsTheme
 import java.time.LocalDate
 
@@ -144,6 +147,62 @@ fun HabitsScreen(
                     ) {
                         Text("Ver Todos ▾", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                     }
+                }
+            }
+        }
+
+        // 1.2. Escudo Anti-Falha Científico (Pilar 5.3)
+        item {
+            StreakFreezeShieldBanner(
+                availableCredits = state.streakFreeze.availableCredits,
+                maxCredits = state.streakFreeze.maxBankedCredits,
+                cleanCheckInsInCycle = state.streakFreeze.cleanCheckInsTowardNextShield,
+                requiredPerShield = state.streakFreeze.checkInsRequiredPerShield,
+                isFreezeActiveToday = state.streakFreeze.isFreezeActiveToday,
+                onActivateFreeze = { viewModel.onIntent(HabitsIntent.ActivateStreakFreeze) }
+            )
+        }
+
+        // 1.5. Curva do Efeito Composto com Chama 3D + Matriz GitHub Anual 7x52 (Pilar 6.1 & 6.5)
+        item {
+            val bestStreak = state.habits.maxOfOrNull { it.currentStreak } ?: 33
+            BentoCard {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text("CURVA DO EFEITO COMPOSTO (1.8%/DIA)", color = LifeOsTheme.OrangeStreak, style = MaterialTheme.typography.labelSmall)
+                        Text("Projeção Dia 1 → 100 com Chama 3D", color = Color.White, fontWeight = FontWeight.Black, fontSize = 16.sp)
+                    }
+                    Text("Dia $bestStreak", color = LifeOsTheme.GreenHealth, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                CompoundEffectFlameChart(activeStreakDays = bestStreak)
+            }
+        }
+
+        state.habits.firstOrNull()?.takeIf { it.annualHeatmap52Weeks.isNotEmpty() }?.let { topHabit ->
+            item {
+                BentoCard {
+                    Text(
+                        text = "MICRO-HEATMAP ANUAL (7×52 · 364 DIAS)",
+                        color = LifeOsTheme.GreenHealth,
+                        style = MaterialTheme.typography.labelSmall
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Matriz GitHub 120 FPS · ${topHabit.name}",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    AnnualGitHubHeatmap7x52(
+                        annualMatrix7x52 = topHabit.annualHeatmap52Weeks,
+                        accentColor = LifeOsTheme.parseHexColorOrDefault(topHabit.hexColor)
+                    )
                 }
             }
         }

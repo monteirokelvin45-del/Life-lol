@@ -51,6 +51,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lifeos.core.domain.algorithm.EbbinghausScheduler
 import com.lifeos.core.domain.model.BookDomainModel
 import com.lifeos.ui.components.BentoCard
+import com.lifeos.ui.components.EbbinghausSawtoothCurveChart
+import com.lifeos.ui.components.KnowledgeBurndownConeChart
 import com.lifeos.ui.components.SmoothMetricSplineChart
 import com.lifeos.ui.theme.LifeOsTheme
 import java.util.Locale
@@ -122,11 +124,11 @@ fun StudyScreen(viewModel: StudyViewModel) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column {
-                        Text("Média de Retenção", color = LifeOsTheme.TextSecondary, fontSize = 11.sp)
+                        Text("Curva Spline · Haptic Scrubber", color = LifeOsTheme.TextSecondary, fontSize = 11.sp)
                         Row(verticalAlignment = Alignment.Bottom) {
                             Text("$avgRetention%", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Black)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Anterior 78% ↑", color = LifeOsTheme.GreenHealth, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                            Text("Arraste para tátil ↑", color = LifeOsTheme.GreenHealth, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                         }
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -139,6 +141,56 @@ fun StudyScreen(viewModel: StudyViewModel) {
                     currentPoints = listOf(62f, 88f, 74f, 48f, avgRetention.toFloat()),
                     previousPoints = listOf(50f, 54f, 68f, 73f, 78f),
                     lineColor = Color.White
+                )
+            }
+        }
+
+        // 0.7. Curva Dente-de-Serra de Ebbinghaus (Pilar 6.9)
+        item {
+            val highestStage = state.allTopics.maxOfOrNull { it.stage } ?: 2
+            BentoCard {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text("CURVA DENTE-DE-SERRA DE EBBINGHAUS", color = LifeOsTheme.PurpleStudy, style = MaterialTheme.typography.labelSmall)
+                        Text("Saltos de Restauração a 100%", color = Color.White, fontWeight = FontWeight.Black, fontSize = 16.sp)
+                    }
+                    Text("-- Sem revisão", color = LifeOsTheme.RedExpense, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                EbbinghausSawtoothCurveChart(activeStageIndex = highestStage)
+            }
+        }
+
+        // 0.9. Burndown de Conhecimento com Cone de Incerteza (Pilar 6.13)
+        item {
+            val bd = state.burndownProjection
+            BentoCard {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text("BURNDOWN · CONE DE INCERTEZA", color = LifeOsTheme.CyanFinance, style = MaterialTheme.typography.labelSmall)
+                        Text("${bd.remainingUnitsToday} de ${bd.totalTargetUnits} pág. restantes", color = Color.White, fontWeight = FontWeight.Black, fontSize = 16.sp)
+                    }
+                    Text(
+                        text = "${bd.daysOptimistic}d – ${bd.daysConservative}d",
+                        color = LifeOsTheme.GreenHealth,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                KnowledgeBurndownConeChart(
+                    historicalRemaining = bd.historicalRemaining,
+                    optimisticCone = bd.optimisticConeRemaining,
+                    realisticCone = bd.realisticConeRemaining,
+                    conservativeCone = bd.conservativeConeRemaining
                 )
             }
         }

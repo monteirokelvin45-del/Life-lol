@@ -46,9 +46,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lifeos.ui.components.AnatomicalMuscleFatigueMap
 import com.lifeos.ui.components.BentoCard
 import com.lifeos.ui.components.CircularStreakRing
 import com.lifeos.ui.components.MacroDomainDonutRing
+import com.lifeos.ui.components.ProgressiveOverloadRegressionChart
 import com.lifeos.ui.components.WeeklyGradientBarsChart
 import com.lifeos.ui.components.WeeklyTrendDotsChart
 import com.lifeos.ui.theme.LifeOsTheme
@@ -297,6 +299,46 @@ fun WorkoutScreen(
                             )
                         }
                     }
+                }
+
+                BentoCard {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text("MAPA ANATÔMICO DE FADIGA MUSCULAR", color = LifeOsTheme.GreenHealth, style = MaterialTheme.typography.labelSmall)
+                            Text("Recuperação Fisiológica Termográfica", color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Black)
+                        }
+                        Text("120 FPS", color = LifeOsTheme.AmberFocus, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    val fMap = state.muscleFatigueGroups.associate { it.groupKey to it.recoveryFraction }
+                    AnatomicalMuscleFatigueMap(
+                        chestRecovery = fMap["CHEST"] ?: 0.90f,
+                        backRecovery = fMap["BACK"] ?: 0.52f,
+                        shouldersRecovery = fMap["SHOULDERS"] ?: 0.78f,
+                        armsRecovery = fMap["ARMS"] ?: 0.60f,
+                        coreRecovery = fMap["CORE"] ?: 0.84f,
+                        legsRecovery = fMap["LEGS"] ?: 0.95f
+                    )
+                }
+
+                BentoCard {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text("SOBRECARGA PROGRESSIVA & REGRESSÃO", color = LifeOsTheme.AmberFocus, style = MaterialTheme.typography.labelSmall)
+                            Text("Repetições × Carga Extra (kg)", color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Black)
+                        }
+                        Text("— Regressão Linear", color = LifeOsTheme.AmberFocus, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    ProgressiveOverloadRegressionChart()
                 }
 
                 BentoCard {

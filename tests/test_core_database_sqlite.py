@@ -123,6 +123,28 @@ CREATE TABLE book_quotes (
 );
 CREATE INDEX index_book_quotes_book_id ON book_quotes (book_id);
 CREATE INDEX index_book_quotes_captured_at_millis ON book_quotes (captured_at_millis);
+
+CREATE TABLE commitment_contracts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    weekly_target_ratio REAL NOT NULL DEFAULT 0.8,
+    stake_amount REAL NOT NULL,
+    currency_code TEXT NOT NULL DEFAULT 'MZN',
+    institution_name TEXT NOT NULL,
+    is_active INTEGER NOT NULL DEFAULT 1,
+    created_at_epoch_day INTEGER NOT NULL DEFAULT 0,
+    last_audited_week_epoch INTEGER
+);
+CREATE INDEX index_commitment_contracts_is_active ON commitment_contracts (is_active);
+
+CREATE TABLE ghost_squad_members (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    slot_index INTEGER NOT NULL,
+    codename TEXT NOT NULL,
+    focus_domain TEXT NOT NULL,
+    aura_hex_color TEXT NOT NULL,
+    base_minutes_today INTEGER NOT NULL DEFAULT 45
+);
+CREATE UNIQUE INDEX index_ghost_squad_members_slot_index ON ghost_squad_members (slot_index);
 """
 
 
@@ -159,6 +181,8 @@ def test_all_seven_entities_registered_in_life_os_database():
         "FinancialRecordEntity::class",
         "BookEntity::class",
         "BookQuoteEntity::class",
+        "CommitmentContractEntity::class",
+        "GhostSquadMemberEntity::class",
     ]
     for entity in expected_entities:
         assert entity in db_src, f"Missing {entity} in LifeOsDatabase"

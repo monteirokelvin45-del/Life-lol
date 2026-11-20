@@ -4,8 +4,10 @@ import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lifeos.core.ai.extractor.DocumentTextExtractor
+import com.lifeos.core.domain.algorithm.BehavioralRetentionEngine
 import com.lifeos.core.domain.model.BookDomainModel
 import com.lifeos.core.domain.model.BookQuoteDomainModel
+import com.lifeos.core.domain.model.KnowledgeBurndownProjection
 import com.lifeos.core.domain.model.StudyTopicDomainModel
 import com.lifeos.core.domain.repository.LifeOsRepository
 import com.lifeos.core.domain.usecase.CompleteStudyReviewUseCase
@@ -31,6 +33,7 @@ data class StudyUiState(
     val allTopics: List<StudyTopicDomainModel> = emptyList(),
     val activeBooks: List<BookDomainModel> = emptyList(),
     val quotes: List<BookQuoteDomainModel> = emptyList(),
+    val burndownProjection: KnowledgeBurndownProjection = BehavioralRetentionEngine.calculateKnowledgeBurndown(null),
     val readingTimer: ActiveReadingTimerState = ActiveReadingTimerState(),
     val scannedQuoteDraft: String? = null,
     val isScanningOcr: Boolean = false
@@ -84,6 +87,7 @@ class StudyViewModel @Inject constructor(
             allTopics = quad.all,
             activeBooks = quad.books,
             quotes = quad.quotes,
+            burndownProjection = BehavioralRetentionEngine.calculateKnowledgeBurndown(quad.books.firstOrNull()),
             readingTimer = timer,
             scannedQuoteDraft = draft,
             isScanningOcr = scanning

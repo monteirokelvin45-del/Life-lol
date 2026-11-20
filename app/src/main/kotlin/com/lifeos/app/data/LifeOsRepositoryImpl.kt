@@ -3,8 +3,10 @@ package com.lifeos.app.data
 import com.lifeos.core.database.dao.LifeOsDao
 import com.lifeos.core.database.entity.BookEntity
 import com.lifeos.core.database.entity.BookQuoteEntity
+import com.lifeos.core.database.entity.CommitmentContractEntity
 import com.lifeos.core.database.entity.ExerciseEntity
 import com.lifeos.core.database.entity.FinancialRecordEntity
+import com.lifeos.core.database.entity.GhostSquadMemberEntity
 import com.lifeos.core.database.entity.HabitEntity
 import com.lifeos.core.database.entity.HabitLogEntity
 import com.lifeos.core.database.entity.StudyTopicEntity
@@ -12,10 +14,12 @@ import com.lifeos.core.database.entity.WorkoutRoutineEntity
 import com.lifeos.core.database.model.HabitWithLogs
 import com.lifeos.core.database.model.WorkoutRoutineWithExercises
 import com.lifeos.core.domain.algorithm.BalanceWheelCalculator
+import com.lifeos.core.domain.algorithm.BehavioralRetentionEngine
 import com.lifeos.core.domain.algorithm.CrossDomainInsightCalculator
 import com.lifeos.core.domain.algorithm.EbbinghausScheduler
 import com.lifeos.core.domain.algorithm.StreakAndHeatmapCalculator
 import com.lifeos.core.domain.model.AiExtractedPlanPayload
+import com.lifeos.core.domain.model.AntiCharityContractModel
 import com.lifeos.core.domain.model.BalanceWheelScore
 import com.lifeos.core.domain.model.BookDomainModel
 import com.lifeos.core.domain.model.BookQuoteDomainModel
@@ -24,8 +28,10 @@ import com.lifeos.core.domain.model.DailyBurnPoint
 import com.lifeos.core.domain.model.ExerciseDomainModel
 import com.lifeos.core.domain.model.FinancialOverviewModel
 import com.lifeos.core.domain.model.FinancialTransactionModel
+import com.lifeos.core.domain.model.GhostSquadPeerModel
 import com.lifeos.core.domain.model.HabitDomainModel
 import com.lifeos.core.domain.model.HabitRecordEntry
+import com.lifeos.core.domain.model.StreakFreezeStatusModel
 import com.lifeos.core.domain.model.StudyTopicDomainModel
 import com.lifeos.core.domain.model.WorkoutRoutineDomainModel
 import com.lifeos.core.domain.repository.LifeOsRepository
@@ -323,6 +329,125 @@ class LifeOsRepositoryImpl @Inject constructor(
                 consistencyRatio14Days = consistency
             )
         }
+    }
+
+    override fun observeStreakFreezeStatus(today: LocalDate): Flow<StreakFreezeStatusModel> {
+        val todayEpoch = today.toEpochDay()
+        return combine(
+            dao.observeCleanCheckInCount(),
+            dao.observeUsedFreezeDaysCount(),
+            dao.observeFreezeActiveOnDay(todayEpoch)
+        ) { cleanCount, usedDays, activeCount ->
+            BehavioralRetentionEngine.calculateStreakFreezeStatus(
+                cleanCheckInsTotal = cleanCount,
+                usedFreezeDaysCount = usedDays,
+                isFreezeActiveToday = activeCount > 0
+            )
+        }
+    }
+
+    override fun observeGhostSquadPeers(): Flow<List<GhostSquadPeerModel>> {
+        return dao.observeGhostSquadMembers().map { members ->
+            val triples = members.map { Triple(it.codename, it.focusDomain, it.auraHexColor) }
+            val mins = members.map { it.baseMinutesToday }
+            BehavioralRetentionEngine.buildGhostSquadPresence(
+                configuredPeers = triples,
+                baseMinutes = mins,
+                currentHour = LocalTime.now().hour
+            )
+        }
+    }
+
+    override fun observeAntiCharityContract(today: LocalDate): Flow<AntiCharityContractModel> {
+        val todayEpoch = today.toEpochDay()
+        return combine(
+            dao.observeActiveCommitmentContract(),
+            observeHabits(today),
+            dao.observeFreezeActiveOnDay(todayEpoch)
+        ) { entity, habits, freezeCount ->
+            val contract = entity ?: CommitmentContractEntity(
+                id = 1L,
+                weeklyTargetRatio = 0.80f,
+                stakeAmount = 500.0,
+                currencyCode = "MZN",
+                institutionName = "Cruz Vermelha & Educação",
+                isActive = true
+            )
+            BehavioralRetentionEngine.evaluateAntiCharityContract(
+                contractId = contract.id,
+                weeklyTargetRatio = contract.weeklyTargetRatio,
+                stakeAmount = contract.stakeAmount,
+                currencyCode = contract.currencyCode,
+                institutionName = contract.institutionName,
+                isActive = contract.isActive,
+                habits = habits,
+                isFreezeActiveToday = freezeCount > 0
+            )
+        }
+    }
+
+    override suspend fun activateStreakFreezeToday(today: LocalDate): Boolean {
+        val status = observeStreakFreezeStatus(today).first()
+        if (status.isFreezeActiveToday || status.availableCredits <= 0) return false
+
+        val todayEpoch = today.toEpochDay()
+        val habitsWithLogs = dao.getAllHabitsWithLogs().first()
+        habitsWithLogs.forEach { item ->
+            val alreadyDone = item.logs.any { it.epochDay == todayEpoch && it.completed }
+            if (!alreadyDone) {
+                dao.insertHabitLog(
+                    HabitLogEntity(
+                        habitId = item.habit.id,
+                        epochDay = todayEpoch,
+                        completed = true,
+                        valueLogged = item.habit.dailyGoalValue,
+                        loggedAtMillis = System.currentTimeMillis(),
+                        note = BehavioralRetentionEngine.STREAK_FREEZE_NOTE_TAG
+                    )
+                )
+            }
+        }
+
+        // Reprograma revisões Ebbinghaus pendentes em +1 dia sem zerar o estágio cognitivo
+        val dueTopics = dao.getDueStudyReviews(todayEpoch).first()
+        val tomorrowEpoch = today.plusDays(1).toEpochDay()
+        dueTopics.forEach { topic ->
+            dao.updateStudyTopic(topic.copy(nextReviewEpochDay = tomorrowEpoch))
+        }
+        return true
+    }
+
+    override suspend fun updateGhostSquadPeers(peers: List<Triple<String, String, String>>) {
+        val entities = peers.take(3).mapIndexed { index, (name, domain, hex) ->
+            GhostSquadMemberEntity(
+                slotIndex = index,
+                codename = name.trim().ifBlank { "Parceiro ${index + 1}" },
+                focusDomain = domain,
+                auraHexColor = hex,
+                baseMinutesToday = 42 + (index * 16)
+            )
+        }
+        dao.upsertGhostSquadMembers(entities)
+    }
+
+    override suspend fun saveAntiCharityContract(
+        weeklyTargetRatio: Float,
+        stakeAmount: Double,
+        currencyCode: String,
+        institutionName: String,
+        isActive: Boolean
+    ) {
+        dao.deactivateAllCommitmentContracts()
+        dao.upsertCommitmentContract(
+            CommitmentContractEntity(
+                weeklyTargetRatio = weeklyTargetRatio.coerceIn(0.4f, 1.0f),
+                stakeAmount = stakeAmount.coerceAtLeast(10.0),
+                currencyCode = currencyCode.ifBlank { "MZN" },
+                institutionName = institutionName.trim().ifBlank { "Cruz Vermelha" },
+                isActive = isActive,
+                createdAtEpochDay = LocalDate.now().toEpochDay()
+            )
+        )
     }
 
     override suspend fun createHabit(
@@ -697,7 +822,7 @@ class LifeOsRepositoryImpl @Inject constructor(
             )
         )
 
-        for (offset in 35 downTo 1) {
+        for (offset in 180 downTo 1) {
             val day = today.minusDays(offset.toLong())
             val epoch = day.toEpochDay()
             val logMillis = day.atTime(7, 30).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
@@ -711,6 +836,25 @@ class LifeOsRepositoryImpl @Inject constructor(
                 dao.insertHabitLog(HabitLogEntity(habitId = h3, epochDay = epoch, completed = true, loggedAtMillis = logMillis))
             }
         }
+
+        dao.upsertGhostSquadMembers(
+            listOf(
+                GhostSquadMemberEntity(slotIndex = 0, codename = "Lucas M.", focusDomain = "STUDY", auraHexColor = "#8B5CF6", baseMinutesToday = 48),
+                GhostSquadMemberEntity(slotIndex = 1, codename = "Marina K.", focusDomain = "WORKOUT", auraHexColor = "#10E05B", baseMinutesToday = 55),
+                GhostSquadMemberEntity(slotIndex = 2, codename = "Rafael T.", focusDomain = "READING", auraHexColor = "#00E5FF", baseMinutesToday = 36)
+            )
+        )
+
+        dao.upsertCommitmentContract(
+            CommitmentContractEntity(
+                weeklyTargetRatio = 0.80f,
+                stakeAmount = 500.0,
+                currencyCode = "MZN",
+                institutionName = "Cruz Vermelha & Bolsas STEM",
+                isActive = true,
+                createdAtEpochDay = today.minusDays(14).toEpochDay()
+            )
+        )
 
         val routineId = dao.insertWorkoutRoutine(
             WorkoutRoutineEntity(
@@ -814,6 +958,11 @@ class LifeOsRepositoryImpl @Inject constructor(
             columns = 20,
             today = today
         )
+        val annualMatrix52 = StreakAndHeatmapCalculator.buildMicroHeatmapMatrix(
+            intensitiesByEpochDay = intensities,
+            columns = 52,
+            today = today
+        )
 
         val targetPerWeek = StreakAndHeatmapCalculator.countTargetDaysPerWeek(item.habit.targetDaysMask)
         val completedThisWeek = completedLogs.count { it.epochDay in weekStartEpoch..todayEpoch }
@@ -860,6 +1009,7 @@ class LifeOsRepositoryImpl @Inject constructor(
             ),
             goalProgressPercent = goalPct,
             heatmapMatrix = matrix,
+            annualHeatmap52Weeks = annualMatrix52,
             recentRecords = recentRecords
         )
     }

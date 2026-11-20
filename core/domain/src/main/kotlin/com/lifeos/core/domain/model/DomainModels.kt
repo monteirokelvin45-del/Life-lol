@@ -50,6 +50,7 @@ data class HabitDomainModel(
     val avgLogTimeFormatted: String,
     val goalProgressPercent: Int,
     val heatmapMatrix: List<List<Float>>, // 7 linhas (Seg..Dom) x 20 colunas semanais
+    val annualHeatmap52Weeks: List<List<Float>> = emptyList(), // 7 linhas x 52 semanas (Pilar 6.1)
     val recentRecords: List<HabitRecordEntry>
 )
 
@@ -184,6 +185,119 @@ data class BalanceWheelScore(
     val financeFraction: Float get() = (financeScore0to10 / 10f).coerceIn(0f, 1f)
     val consistencyFraction: Float get() = (consistencyScore0to10 / 10f).coerceIn(0f, 1f)
 }
+
+// =============================================================================
+// PILAR 5 & PILAR 6: CIÊNCIA COMPORTAMENTAL, RETENÇÃO & 14 GRÁFICOS 120 FPS
+// =============================================================================
+
+data class CircadianHourPetal(
+    val hour24: Int,
+    val intensityFraction: Float, // 0.15f .. 1.0f
+    val phaseKey: String,         // "SLEEP", "COGNITIVE", "CAFFEINE_CUTOFF", "EXECUTION", "NEUROMUSCULAR", "MELATONIN"
+    val hexColor: String
+)
+
+data class CircadianStatusModel(
+    val currentHour: Int,
+    val currentMinute: Int,
+    val activeBiologicalWindowTitle: String,
+    val activeBiologicalSubtitle: String,
+    val intellectualPeakWindow: String = "08:30 – 11:30",
+    val caffeineCutoffTime: String = "14:00",
+    val minutesUntilCaffeineCutoff: Int,
+    val isPastCaffeineCutoff: Boolean,
+    val caffeineGuidanceLabel: String,
+    val neuromuscularPeakWindow: String = "17:00 – 19:30",
+    val sleepGateTime: String = "22:30",
+    val petals24h: List<CircadianHourPetal>
+)
+
+data class StreakFreezeStatusModel(
+    val availableCredits: Int,
+    val maxBankedCredits: Int = 5,
+    val usedCreditsTotal: Int,
+    val cleanCheckInsTowardNextShield: Int,
+    val checkInsRequiredPerShield: Int = 7,
+    val isFreezeActiveToday: Boolean
+)
+
+data class GhostSquadPeerModel(
+    val slotIndex: Int,
+    val codename: String,
+    val focusDomain: String,
+    val statusHeadline: String,
+    val auraHexColor: String,
+    val minutesFocusedToday: Int,
+    val isCurrentlyPulsing: Boolean
+)
+
+data class AntiCharityContractModel(
+    val id: Long,
+    val weeklyTargetRatio: Float,
+    val currentWeekRatio: Float,
+    val stakeAmount: Double,
+    val currencyCode: String,
+    val institutionName: String,
+    val isActive: Boolean,
+    val isProtectedByFreeze: Boolean,
+    val isAtRisk: Boolean,
+    val statusSummary: String
+)
+
+data class RpgAvatarAttributesModel(
+    val strength0to100: Int,
+    val intellect0to100: Int,
+    val finances0to100: Int,
+    val resilience0to100: Int,
+    val focus0to100: Int,
+    val culture0to100: Int,
+    val avatarLevel: Int,
+    val archetypeTitle: String
+) {
+    fun asNormalizedList(): List<Float> = listOf(
+        (strength0to100 / 100f).coerceIn(0.12f, 1f),
+        (intellect0to100 / 100f).coerceIn(0.12f, 1f),
+        (finances0to100 / 100f).coerceIn(0.12f, 1f),
+        (resilience0to100 / 100f).coerceIn(0.12f, 1f),
+        (focus0to100 / 100f).coerceIn(0.12f, 1f),
+        (culture0to100 / 100f).coerceIn(0.12f, 1f)
+    )
+}
+
+data class MuscleFatigueGroupModel(
+    val groupKey: String,
+    val displayName: String,
+    val recoveryFraction: Float // 0.0f = fadiga aguda (vermelho), 0.5f = recuperação (âmbar), 1.0f = 100% pronto (verde)
+)
+
+data class SankeyCashflowBreakdown(
+    val netIncome: Double,
+    val investmentsAmount: Double,
+    val fixedEssentialsAmount: Double,
+    val capitalLeakageAmount: Double,
+    val unallocatedSurplus: Double,
+    val currencyCode: String
+)
+
+data class MultivariateScatterPoint(
+    val xNormalized: Float, // Ex: Qualidade do Sono / Consistência Física (0..1)
+    val yNormalized: Float, // Ex: Gasto Impulsivo ou Horas de Estudo (0..1)
+    val rawXLabel: String,
+    val rawYLabel: String,
+    val isPositiveCluster: Boolean
+)
+
+data class KnowledgeBurndownProjection(
+    val totalTargetUnits: Int,
+    val remainingUnitsToday: Int,
+    val historicalRemaining: List<Float>,
+    val optimisticConeRemaining: List<Float>,
+    val realisticConeRemaining: List<Float>,
+    val conservativeConeRemaining: List<Float>,
+    val daysOptimistic: Int,
+    val daysRealistic: Int,
+    val daysConservative: Int
+)
 
 // =============================================================================
 // JSON SCHEMA ESTRITO DE INGESTÃO DOCUMENTAL (PILAR 5.1)

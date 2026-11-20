@@ -8,12 +8,17 @@ import com.lifeos.core.ai.engine.StructuredPlanAiEngine
 import com.lifeos.core.ai.extractor.DocumentTextExtractor
 import com.lifeos.core.ai.security.AiCredentialsStore
 import com.lifeos.core.ai.security.AiLlmProvider
+import com.lifeos.core.domain.algorithm.BehavioralRetentionEngine
 import com.lifeos.core.domain.algorithm.TimeContextResolver
 import com.lifeos.core.domain.model.AiExtractedPlanPayload
 import com.lifeos.core.domain.model.BalanceWheelScore
 import com.lifeos.core.domain.model.BookDomainModel
+import com.lifeos.core.domain.model.CircadianStatusModel
 import com.lifeos.core.domain.model.FinancialOverviewModel
+import com.lifeos.core.domain.model.GhostSquadPeerModel
 import com.lifeos.core.domain.model.HabitDomainModel
+import com.lifeos.core.domain.model.RpgAvatarAttributesModel
+import com.lifeos.core.domain.model.StreakFreezeStatusModel
 import com.lifeos.core.domain.model.StudyTopicDomainModel
 import com.lifeos.core.domain.model.TimeOfDayContext
 import com.lifeos.core.domain.model.WorkoutRoutineDomainModel
@@ -32,16 +37,21 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import java.time.LocalTime
 import javax.inject.Inject
 
 data class HomeUiState(
     val timeContext: TimeOfDayContext = TimeContextResolver.resolve(),
+    val circadianStatus: CircadianStatusModel = BehavioralRetentionEngine.resolveCircadianStatus(LocalTime.now()),
     val balanceWheel: BalanceWheelScore = BalanceWheelScore(0f, 0f, 0f, 0f, 0f),
     val habits: List<HabitDomainModel> = emptyList(),
     val todayWorkout: WorkoutRoutineDomainModel? = null,
     val dueStudies: List<StudyTopicDomainModel> = emptyList(),
     val activeBooks: List<BookDomainModel> = emptyList(),
     val financialOverview: FinancialOverviewModel? = null,
+    val ghostSquad: List<GhostSquadPeerModel> = emptyList(),
+    val streakFreeze: StreakFreezeStatusModel = StreakFreezeStatusModel(1, 5, 0, 0, 7, false),
+    val rpgAttributes: RpgAvatarAttributesModel = RpgAvatarAttributesModel(78, 82, 80, 84, 76, 75, 79, "Operador Sistêmico"),
     val activeTimer: ActiveTimerSnapshot = ActiveTimerSnapshot(),
     val pendingPlanPreview: AiExtractedPlanPayload? = null,
     val aiProvider: AiLlmProvider = AiLlmProvider.OFFLINE_LOCAL,
@@ -61,6 +71,8 @@ sealed interface HomeIntent {
     data object CancelPlanPreview : HomeIntent
     data class StartPomodoroFocus(val minutes: Int = 25) : HomeIntent
     data object StopActiveTimer : HomeIntent
+    data object ActivateStreakFreeze : HomeIntent
+    data class UpdateGhostSquad(val peers: List<Triple<String, String, String>>) : HomeIntent
     data object DismissMessage : HomeIntent
 }
 
@@ -98,6 +110,16 @@ class HomeViewModel @Inject constructor(
         CoreBundle(wheel, habits, workout, studies, books)
     }
 
+    private val retentionBundleFlow = combine(
+        repository.observeGhostSquadPeers(),
+        repository.observeStreakFreezeStatus(),
+        repository.observeAllWorkouts(),
+        repository.observeAllStudyTopics(),
+        repository.observeBookQuotes()
+    ) { squad, freeze, allWorkouts, allStudies, quotes ->
+        RetentionBundle(squad, freeze, allWorkouts, allStudies, quotes.size)
+    }
+
     private val auxStateBundle = combine(
         repository.observeFinancialOverview(),
         ActiveExecutionService.timerState,
@@ -117,17 +139,40 @@ class HomeViewModel @Inject constructor(
 
     val uiState: StateFlow<HomeUiState> = combine(
         coreDomainBundle,
+        retentionBundleFlow,
         auxStateBundle,
         aiConfigFlow
-    ) { core, aux, cfg ->
+    ) { core, ret, aux, cfg ->
+        val simulatedClock = when (aux.timeContext) {
+            TimeOfDayContext.MORNING_COGNITIVE -> LocalTime.of(9, 15)
+            TimeOfDayContext.AFTERNOON_EXECUTION -> LocalTime.of(14, 30)
+            TimeOfDayContext.LATE_AFTERNOON_PHYSIOLOGY -> LocalTime.of(18, 0)
+            TimeOfDayContext.NIGHT_CLOSURE_SLEEP -> LocalTime.of(22, 0)
+        }
+        val circadian = BehavioralRetentionEngine.resolveCircadianStatus(simulatedClock)
+        val rpg = BehavioralRetentionEngine.calculateRpgAttributes(
+            workouts = ret.allWorkouts,
+            studies = ret.allStudies,
+            books = core.books,
+            quotesCount = ret.quotesCount,
+            habits = core.habits,
+            incomeMonth = aux.finance.totalIncomeMonth,
+            expenseMonth = aux.finance.totalExpenseMonth,
+            availableShields = ret.freeze.availableCredits
+        )
+
         HomeUiState(
             timeContext = aux.timeContext,
+            circadianStatus = circadian,
             balanceWheel = core.wheel,
             habits = core.habits,
             todayWorkout = core.workout,
             dueStudies = core.studies,
             activeBooks = core.books,
             financialOverview = aux.finance,
+            ghostSquad = ret.squad,
+            streakFreeze = ret.freeze,
+            rpgAttributes = rpg,
             activeTimer = aux.timer,
             pendingPlanPreview = aux.preview,
             aiProvider = cfg.provider,
@@ -180,6 +225,22 @@ class HomeViewModel @Inject constructor(
             }
             HomeIntent.StopActiveTimer -> {
                 ActiveExecutionService.stopTimer(appContext)
+            }
+            HomeIntent.ActivateStreakFreeze -> {
+                viewModelScope.launch {
+                    val activated = repository.activateStreakFreezeToday()
+                    messageFlow.value = if (activated) {
+                        "🛡️ Escudo Anti-Falha ativado! Streaks e Ebbinghaus protegidos hoje."
+                    } else {
+                        "Escudo já ativo hoje ou sem créditos disponíveis."
+                    }
+                }
+            }
+            is HomeIntent.UpdateGhostSquad -> {
+                viewModelScope.launch {
+                    repository.updateGhostSquadPeers(intent.peers)
+                    messageFlow.value = "👻 Esquadrão Silencioso atualizado com sucesso."
+                }
             }
             HomeIntent.DismissMessage -> {
                 messageFlow.value = null
@@ -239,6 +300,14 @@ class HomeViewModel @Inject constructor(
         val workout: WorkoutRoutineDomainModel?,
         val studies: List<StudyTopicDomainModel>,
         val books: List<BookDomainModel>
+    )
+
+    private data class RetentionBundle(
+        val squad: List<GhostSquadPeerModel>,
+        val freeze: StreakFreezeStatusModel,
+        val allWorkouts: List<WorkoutRoutineDomainModel>,
+        val allStudies: List<StudyTopicDomainModel>,
+        val quotesCount: Int
     )
 
     private data class AuxBundle(

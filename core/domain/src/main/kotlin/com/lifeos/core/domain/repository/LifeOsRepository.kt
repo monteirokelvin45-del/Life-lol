@@ -1,11 +1,14 @@
 package com.lifeos.core.domain.repository
 
 import com.lifeos.core.domain.model.AiExtractedPlanPayload
+import com.lifeos.core.domain.model.AntiCharityContractModel
 import com.lifeos.core.domain.model.BalanceWheelScore
 import com.lifeos.core.domain.model.BookDomainModel
 import com.lifeos.core.domain.model.BookQuoteDomainModel
 import com.lifeos.core.domain.model.FinancialOverviewModel
+import com.lifeos.core.domain.model.GhostSquadPeerModel
 import com.lifeos.core.domain.model.HabitDomainModel
+import com.lifeos.core.domain.model.StreakFreezeStatusModel
 import com.lifeos.core.domain.model.StudyTopicDomainModel
 import com.lifeos.core.domain.model.WorkoutRoutineDomainModel
 import kotlinx.coroutines.flow.Flow
@@ -30,6 +33,24 @@ interface LifeOsRepository {
     fun observeBookQuotes(): Flow<List<BookQuoteDomainModel>>
 
     fun observeBalanceWheel(today: LocalDate = LocalDate.now()): Flow<BalanceWheelScore>
+
+    fun observeStreakFreezeStatus(today: LocalDate = LocalDate.now()): Flow<StreakFreezeStatusModel>
+
+    fun observeGhostSquadPeers(): Flow<List<GhostSquadPeerModel>>
+
+    fun observeAntiCharityContract(today: LocalDate = LocalDate.now()): Flow<AntiCharityContractModel>
+
+    suspend fun activateStreakFreezeToday(today: LocalDate = LocalDate.now()): Boolean
+
+    suspend fun updateGhostSquadPeers(peers: List<Triple<String, String, String>>)
+
+    suspend fun saveAntiCharityContract(
+        weeklyTargetRatio: Float,
+        stakeAmount: Double,
+        currencyCode: String,
+        institutionName: String,
+        isActive: Boolean
+    )
 
     suspend fun createHabit(
         name: String,

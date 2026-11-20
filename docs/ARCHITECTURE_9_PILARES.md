@@ -11,11 +11,31 @@ Este documento consolida na base de versão do repositório os **9 Pilares Estru
 3. **Pilar 3 — Permissões & Manifesto do Sistema:** `SCHEDULE_EXACT_ALARM`, `USE_EXACT_ALARM`, `WAKE_LOCK`, `POST_NOTIFICATIONS`, `FOREGROUND_SERVICE_SPECIAL_USE`, `READ_CALENDAR` / `WRITE_CALENDAR`, `CAMERA`, `READ_MEDIA_DOCUMENTS`, `ExactAlarmReceiver` e `ActiveExecutionService`.
 4. **Pilar 4 — Persistência Local Relacional (`:core:database`):** Room + SQLCipher AES-256 com envelope criptográfico no Android Keystore (`AES/GCM/NoPadding`), modo WAL e consultas reativas em `Flow`.
 5. **Pilar 5 — Cérebro de IA (Document Engine & JSON Schema):** Extração textual de PDF/DOCX/MD para JSON Schema estrito (`detected_habits`, `detected_workouts`, `detected_studies`, `detected_finances`) persistido em transação atômica (`@Transaction`).
-6. **Pilar 6 — Algoritmos Comportamentais e Fisiológicos:**
-   - **Ebbinghaus (`EbbinghausScheduler`):** Estágios `[1, 3, 7, 16, 30]` dias.
-   - **Balance Wheel Index (`0.0` a `10.0`):** `LifeScore = (Corpo * 0.30) + (Foco * 0.25) + (Finanças * 0.25) + (Consistência * 0.20)`.
-7. **Pilar 7 — Integrações de Baixo Nível Android:** `SystemAlarmScheduler` (`setExactAndAllowWhileIdle` imune ao Doze Mode), `CalendarSyncManager` (`CalendarContract.Events`) e `LifeOsGlanceWidget` 4x2.
-8. **Pilar 8 — Design System & Visualização em Canvas 120 FPS:** OLED Pure Black (`#000000`), Bento Cards (`#0D0D0D` / `#141414`), bordas sutis `1dp` (`#1F1F1F`), `HabitMicroHeatmap`, `BalanceWheel` polar e matrizes financeiras.
+6. **Pilar 5 — Ciência Comportamental, Retenção & Gamificação:**
+   - **Roda do Equilíbrio Cósmico (`BalanceWheel`):** Score `0.0–10.0` ponderando Corpo (30%), Foco (25%), Finanças (25%) e Consistência (20%) com preenchimento elástico (`spring()`).
+   - **Motor Circadiano & Janelas Biológicas (`BehavioralRetentionEngine`):** Linha cronobiológica com Pico Intelectual (`08:30–11:30`), Corte Exato de Cafeína (*Caffeine Cutoff* `14:00`) e Pico Neuromuscular (`17:00–19:30`).
+   - **Escudo Anti-Falha (`StreakFreezeShieldBanner`):** Acúmulo de créditos de repouso por consistência (+1 a cada 7 check-ins limpos) protegendo Streaks e reprogramando Ebbinghaus (+1 dia) sem punição desmotivadora.
+   - **Ghost Multiplayer Assíncrono (`GhostSquadSilentAuraRow`):** Esquadrão silencioso com auras de foco em tempo real de até 3 amigos, sem salas de conversa ou feeds de distração.
+   - **Contratos de Compromisso Anti-Charity (`AntiCharityCommitmentBanner`):** Caução financeira semanal configurável com cláusula de aversão à perda vinculada a instituição beneficente.
+7. **Pilar 6 — A Suíte Completa de 14 Gráficos em Canvas (120 FPS Nativos):**
+   1. `HabitMicroHeatmap` & `AnnualGitHubHeatmap7x52` — Micro-Heatmap `7x52` estilo GitHub.
+   2. `BalanceWheel` — Roda do Equilíbrio Cósmico com arcos concêntricos elásticos.
+   3. `SpendingBurnMatrix` — Escada de Queima de Caixa em tijolos digitais degradê laranja → vermelho carmesim.
+   4. `SmoothMetricSplineChart` — Curva Spline de Bézier com **Haptic Scrubber** milimétrico.
+   5. `CompoundEffectFlameChart` — Curva do Efeito Composto (Dia 1, 7, 30 e 100) com Chama 3D vetorial.
+   6. `ConcentricFocusMacroRings` — Anéis Concêntricos de Foco e Macros estilo Apple Fitness.
+   7. `ProgressiveOverloadRegressionChart` — Barras emparelhadas + Linha de Regressão Linear.
+   8. `FluidSankeyCashflowChart` — Diagrama de Fluxo de Sankey Fluido (Investimentos, Fixos, Vazamentos).
+   9. `EbbinghausSawtoothCurveChart` — Curva Dente-de-Serra exata de Ebbinghaus com saltos a 100%.
+   10. `MultivariateCorrelationScatterChart` — Matriz de Correlação Multivariada da IA (Sono/Treino × Impulso).
+   11. `AnatomicalMuscleFatigueMap` — Mapa Anatômico Anterior & Posterior de Fadiga Muscular.
+   12. `ChronoNightingaleWheel24h` — Chrono Wheel de 24 Horas (Rosa de Nightingale).
+   13. `KnowledgeBurndownConeChart` — Burndown de Conhecimento com Cone de Incerteza (`p10/p50/p90`).
+   14. `HexagonalRpgRadarChart` — Radar Hexagonal de Atributos RPG (6 vértices).
+8. **Pilar 7 — Segurança Local-First & Performance Zero Garbage Collection:**
+   - **Dark Mode OLED Absoluto (`#000000`):** Corte físico de emissão luminosa em painéis AMOLED/OLED.
+   - **Persistência Criptografada (`LifeOsDatabase` + `DatabasePassphraseProvider`):** Room + SQLCipher AES-256 com chave envelopada em `AES/GCM/NoPadding` no Android Keystore.
+   - **Performance Zero Garbage Collection:** Todos os 14 gráficos utilizam `Modifier.drawWithCache` e objetos `Path` pré-alocados e reaproveitados (`reset()`), zero alocação de `Path()` em `onDrawBehind` a 120 FPS.
 9. **Pilar 9 — Execução Modular por Fases:**
    - **Fase 1 (Concluída):** `:core:database` — Entidades, Relacionamentos, `LifeOsTypeConverters`, `LifeOsDao`, `DatabasePassphraseProvider`, `LifeOsDatabase` (SQLCipher) e `DatabaseModule` (Hilt).
    - **Fase 2 (Próxima):** `:core:domain` & `:core:ai` — Casos de Uso, `EbbinghausScheduler`, `BalanceWheelCalculator`, `DocumentTextExtractor` e `IngestPlanUseCase`.

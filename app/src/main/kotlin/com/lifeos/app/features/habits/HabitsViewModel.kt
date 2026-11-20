@@ -3,6 +3,7 @@ package com.lifeos.app.features.habits
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lifeos.core.domain.model.HabitDomainModel
+import com.lifeos.core.domain.model.StreakFreezeStatusModel
 import com.lifeos.core.domain.repository.LifeOsRepository
 import com.lifeos.core.domain.usecase.ToggleHabitCheckInUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -16,6 +17,7 @@ import javax.inject.Inject
 
 data class HabitsUiState(
     val habits: List<HabitDomainModel> = emptyList(),
+    val streakFreeze: StreakFreezeStatusModel = StreakFreezeStatusModel(1, 5, 0, 0, 7, false),
     val selectedHabitId: Long? = null
 ) {
     val selectedHabit: HabitDomainModel?
@@ -25,6 +27,7 @@ data class HabitsUiState(
 sealed interface HabitsIntent {
     data class ToggleToday(val habitId: Long, val note: String? = null) : HabitsIntent
     data class SelectHabitDetail(val habitId: Long?) : HabitsIntent
+    data object ActivateStreakFreeze : HabitsIntent
     data class CreateHabit(
         val name: String,
         val description: String,
@@ -44,10 +47,12 @@ class HabitsViewModel @Inject constructor(
 
     val uiState: StateFlow<HabitsUiState> = combine(
         repository.observeHabits(),
+        repository.observeStreakFreezeStatus(),
         selectedIdFlow
-    ) { habits, selectedId ->
+    ) { habits, freeze, selectedId ->
         HabitsUiState(
             habits = habits,
+            streakFreeze = freeze,
             selectedHabitId = selectedId
         )
     }.stateIn(
@@ -65,6 +70,11 @@ class HabitsViewModel @Inject constructor(
             }
             is HabitsIntent.SelectHabitDetail -> {
                 selectedIdFlow.value = intent.habitId
+            }
+            HabitsIntent.ActivateStreakFreeze -> {
+                viewModelScope.launch {
+                    repository.activateStreakFreezeToday()
+                }
             }
             is HabitsIntent.CreateHabit -> {
                 viewModelScope.launch {

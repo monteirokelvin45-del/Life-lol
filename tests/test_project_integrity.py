@@ -152,3 +152,40 @@ def test_ai_extraction_json_schema_is_valid_json_draft_07():
         "detected_studies",
         "detected_finances",
     }
+
+
+def test_all_14_luxury_canvas_charts_present_and_zero_gc_draw_with_cache():
+    ui_dir = REPO_ROOT / "core/ui/src/main/kotlin/com/lifeos/ui/components"
+    combined_ui_src = "\n".join(
+        p.read_text(encoding="utf-8") for p in sorted(ui_dir.glob("*.kt"))
+    )
+
+    required_14_charts = [
+        "fun HabitMicroHeatmap(",
+        "fun AnnualGitHubHeatmap7x52(",
+        "fun BalanceWheel(",
+        "fun SpendingBurnMatrix(",
+        "fun SmoothMetricSplineChart(",
+        "fun CompoundEffectFlameChart(",
+        "fun ConcentricFocusMacroRings(",
+        "fun ProgressiveOverloadRegressionChart(",
+        "fun FluidSankeyCashflowChart(",
+        "fun EbbinghausSawtoothCurveChart(",
+        "fun MultivariateCorrelationScatterChart(",
+        "fun AnatomicalMuscleFatigueMap(",
+        "fun ChronoNightingaleWheel24h(",
+        "fun KnowledgeBurndownConeChart(",
+        "fun HexagonalRpgRadarChart(",
+    ]
+    for sig in required_14_charts:
+        assert sig in combined_ui_src, f"Missing Pillar 6 120 FPS chart {sig}"
+
+    for p in sorted(ui_dir.glob("*.kt")):
+        src = p.read_text(encoding="utf-8")
+        # Pillar 7.3 Zero-GC: all custom drawing uses Modifier.drawWithCache, never uncached Canvas {}
+        assert "Canvas(" not in src, f"Uncached Canvas() found in {p.name}; use Modifier.drawWithCache"
+        for match in re.finditer(r"onDrawBehind\s*\{", src):
+            # Ensure no Path() heap allocation inside the 120Hz onDrawBehind block
+            tail = src[match.end() : match.end() + 1800]
+            assert "Path()" not in tail, f"Path() allocated inside onDrawBehind in {p.name}"
+

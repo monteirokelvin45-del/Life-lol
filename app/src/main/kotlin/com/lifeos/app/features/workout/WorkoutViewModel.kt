@@ -3,6 +3,8 @@ package com.lifeos.app.features.workout
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.lifeos.core.domain.algorithm.BehavioralRetentionEngine
+import com.lifeos.core.domain.model.MuscleFatigueGroupModel
 import com.lifeos.core.domain.model.WorkoutRoutineDomainModel
 import com.lifeos.core.domain.repository.LifeOsRepository
 import com.lifeos.core.system.calendar.CalendarSyncManager
@@ -25,6 +27,7 @@ import javax.inject.Inject
 data class WorkoutUiState(
     val selectedDayOfWeek: Int = LocalDate.now().dayOfWeek.value,
     val routine: WorkoutRoutineDomainModel? = null,
+    val muscleFatigueGroups: List<MuscleFatigueGroupModel> = emptyList(),
     val activeTimer: ActiveTimerSnapshot = ActiveTimerSnapshot(),
     val calendarSyncMessage: String? = null
 )
@@ -60,12 +63,14 @@ class WorkoutViewModel @Inject constructor(
     val uiState: StateFlow<WorkoutUiState> = combine(
         selectedDayFlow,
         routineFlow,
+        repository.observeAllWorkouts(),
         ActiveExecutionService.timerState,
         calendarMessageFlow
-    ) { day, routine, timer, msg ->
+    ) { day, routine, allWorkouts, timer, msg ->
         WorkoutUiState(
             selectedDayOfWeek = day,
             routine = routine,
+            muscleFatigueGroups = BehavioralRetentionEngine.calculateMuscleFatigueMap(allWorkouts, routine),
             activeTimer = timer,
             calendarSyncMessage = msg
         )

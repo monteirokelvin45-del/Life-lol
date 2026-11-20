@@ -65,7 +65,11 @@ import com.lifeos.core.domain.model.BookDomainModel
 import com.lifeos.core.domain.model.TimeOfDayContext
 import com.lifeos.ui.components.BalanceWheel
 import com.lifeos.ui.components.BentoCard
+import com.lifeos.ui.components.ChronoNightingaleWheel24h
+import com.lifeos.ui.components.ConcentricFocusMacroRings
+import com.lifeos.ui.components.GhostSquadSilentAuraRow
 import com.lifeos.ui.components.HabitMicroHeatmap
+import com.lifeos.ui.components.HexagonalRpgRadarChart
 import com.lifeos.ui.components.StreakWeekSpotlightBanner
 import com.lifeos.ui.theme.LifeOsTheme
 import kotlin.math.roundToInt
@@ -80,6 +84,7 @@ fun HomeScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showPortalModal by remember { mutableStateOf(false) }
+    var showSquadModal by remember { mutableStateOf(false) }
 
     LaunchedEffect(incomingSharedUri, incomingSharedText) {
         when {
@@ -362,11 +367,16 @@ fun HomeScreen(
             StreakWeekSpotlightBanner(
                 streakDays = topStreak,
                 weekCompletedFlags = lastColFlags,
-                progressPercent = pct
+                progressPercent = pct,
+                shieldBadgeText = if (state.streakFreeze.isFreezeActiveToday) {
+                    "🛡️ Escudo Ativo"
+                } else {
+                    "🛡️ ${state.streakFreeze.availableCredits} escudos"
+                }
             )
         }
 
-        // 3. A Roda do Equilíbrio da Vida (Referência 04 "Баланс")
+        // 3. A Roda do Equilíbrio Cósmico (Pilar 5.1 & Pilar 6.2)
         item {
             BentoCard {
                 Row(
@@ -375,15 +385,15 @@ fun HomeScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Balanço · 30 dias",
+                        text = "Roda do Equilíbrio Cósmico",
                         color = Color.White,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Black
                     )
                     Text(
-                        text = "✨ Planejamento IA",
+                        text = "✨ 120 FPS Zero-GC",
                         color = LifeOsTheme.AmberFocus,
-                        fontSize = 12.sp,
+                        fontSize = 11.sp,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -407,34 +417,179 @@ fun HomeScreen(
                 val totalCheckIns = state.habits.sumOf { it.totalCheckIns }
                 Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
                     DomainScoreRow(
-                        iconGlyph = "💼",
-                        label = "Carreira & Finanças",
-                        subStats = "⏱ 30:30h   ✓ 15   ↻ 25%",
-                        score = state.balanceWheel.financeScore0to10,
-                        color = LifeOsTheme.CyanFinance
-                    )
-                    DomainScoreRow(
                         iconGlyph = "➕",
-                        label = "Saúde & Corpo",
-                        subStats = "⏱ 6:40h   ✓ ${state.todayWorkout?.completedExercisesCount ?: 2}   ↻ 30%",
+                        label = "Corpo (Peso 30%)",
+                        subStats = "✓ ${state.todayWorkout?.completedExercisesCount ?: 2} ex · Fisiologia",
                         score = state.balanceWheel.bodyScore0to10,
                         color = LifeOsTheme.GreenHealth
                     )
                     DomainScoreRow(
                         iconGlyph = "🧠",
-                        label = "Estudos & Leitura",
-                        subStats = "⏱ 10:45h   ✓ ${state.dueStudies.size}   ↻ 25%",
+                        label = "Foco (Peso 25%)",
+                        subStats = "✓ ${state.dueStudies.size} Ebbinghaus · Leitura",
                         score = state.balanceWheel.focusScore0to10,
                         color = LifeOsTheme.PurpleStudy
                     )
                     DomainScoreRow(
+                        iconGlyph = "💼",
+                        label = "Finanças (Peso 25%)",
+                        subStats = "Caixa Blindado · Poupança",
+                        score = state.balanceWheel.financeScore0to10,
+                        color = LifeOsTheme.CyanFinance
+                    )
+                    DomainScoreRow(
                         iconGlyph = "🔥",
-                        label = "Consistência & Hábitos",
-                        subStats = "⏱ 14d   ✓ $totalCheckIns   ↻ $topStreak dias",
+                        label = "Consistência (Peso 20%)",
+                        subStats = "✓ $totalCheckIns check-ins · $topStreak dias",
                         score = state.balanceWheel.consistencyScore0to10,
                         color = LifeOsTheme.OrangeStreak
                     )
                 }
+            }
+        }
+
+        // 3.2. Motor Circadiano, Caffeine Cutoff & Chrono Wheel de 24 Horas (Pilar 5.2 & Pilar 6.12)
+        item {
+            val circ = state.circadianStatus
+            BentoCard(borderColor = if (circ.isPastCaffeineCutoff) LifeOsTheme.AmberFocus.copy(alpha = 0.5f) else LifeOsTheme.CyanFinance.copy(alpha = 0.45f)) {
+                Text(
+                    text = "🧬 MOTOR CIRCADIANO & CHRONO WHEEL 24H",
+                    color = LifeOsTheme.CyanFinance,
+                    style = MaterialTheme.typography.labelSmall
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = circ.activeBiologicalWindowTitle,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 17.sp
+                )
+                Text(
+                    text = circ.activeBiologicalSubtitle,
+                    color = LifeOsTheme.TextSecondary,
+                    fontSize = 12.sp
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    ChronoNightingaleWheel24h(
+                        hourlyIntensities24 = circ.petals24h.map { it.intensityFraction },
+                        hourlyHexColors24 = circ.petals24h.map { it.hexColor },
+                        currentHour24 = circ.currentHour,
+                        modifier = Modifier.size(168.dp)
+                    )
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text("🧠 Foco: ${circ.intellectualPeakWindow}", color = LifeOsTheme.PurpleStudy, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Text("☕ Corte: ${circ.caffeineCutoffTime}", color = if (circ.isPastCaffeineCutoff) LifeOsTheme.RedExpense else LifeOsTheme.AmberFocus, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Text("🏋️ Força: ${circ.neuromuscularPeakWindow}", color = LifeOsTheme.GreenHealth, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Text("🌙 Sono: ${circ.sleepGateTime}", color = LifeOsTheme.CyanFinance, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(LifeOsTheme.SurfaceElevated)
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        text = circ.caffeineGuidanceLabel,
+                        color = if (circ.isPastCaffeineCutoff) LifeOsTheme.AmberFocus else LifeOsTheme.GreenHealth,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        }
+
+        // 3.4. Anéis Concêntricos de Foco e Macros (Pilar 6.6)
+        item {
+            val bookProg = state.activeBooks.firstOrNull()?.let {
+                (it.pagesReadToday.toFloat() / it.dailyGoalPages.coerceAtLeast(1)).coerceIn(0.15f, 1f)
+            } ?: 0.75f
+            BentoCard {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    ConcentricFocusMacroRings(
+                        outerFocusProgress = state.balanceWheel.studyFraction.coerceAtLeast(0.64f),
+                        middleMacroProgress = state.balanceWheel.healthFraction.coerceAtLeast(0.72f),
+                        innerReadingProgress = bookProg,
+                        modifier = Modifier.size(134.dp)
+                    )
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text("Anéis de Foco & Macros", color = Color.White, fontWeight = FontWeight.Black, fontSize = 16.sp)
+                        Text("● Anel Externo: Blocos Pomodoro & Retenção", color = Color(0xFFFF2A6D), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        Text("● Anel Médio: Proteína (160g) & Calistenia", color = Color(0xFFA8FF00), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        Text("● Anel Interno: Hidratação (3L) & Leitura", color = LifeOsTheme.CyanFinance, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
+        }
+
+        // 3.6. Ghost Multiplayer Assíncrono — Esquadrão Silencioso (Pilar 5.4)
+        if (state.ghostSquad.isNotEmpty()) {
+            item {
+                BentoCard {
+                    GhostSquadSilentAuraRow(
+                        codenames = state.ghostSquad.map { it.codename },
+                        domainLabels = state.ghostSquad.map {
+                            when (it.focusDomain) {
+                                "STUDY" -> "Estudo"
+                                "WORKOUT" -> "Treino"
+                                else -> "Leitura"
+                            }
+                        },
+                        minutesList = state.ghostSquad.map { it.minutesFocusedToday },
+                        auraColors = state.ghostSquad.map { LifeOsTheme.parseHexColorOrDefault(it.auraHexColor) },
+                        pulsingFlags = state.ghostSquad.map { it.isCurrentlyPulsing },
+                        onEditSquad = { showSquadModal = true }
+                    )
+                }
+            }
+        }
+
+        // 3.8. Radar Hexagonal de Atributos RPG (Pilar 6.14)
+        item {
+            val rpg = state.rpgAttributes
+            BentoCard {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text("AVATAR DE ALTA PERFORMANCE", color = LifeOsTheme.PurpleStudy, style = MaterialTheme.typography.labelSmall)
+                        Text("Nv. ${rpg.avatarLevel} · ${rpg.archetypeTitle}", color = Color.White, fontWeight = FontWeight.Black, fontSize = 18.sp)
+                    }
+                    Text("6 Vértices RPG", color = LifeOsTheme.GreenHealth, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                HexagonalRpgRadarChart(
+                    normalizedAttributes6 = rpg.asNormalizedList(),
+                    attributeScores0to100 = listOf(
+                        rpg.strength0to100,
+                        rpg.intellect0to100,
+                        rpg.finances0to100,
+                        rpg.resilience0to100,
+                        rpg.focus0to100,
+                        rpg.culture0to100
+                    )
+                )
             }
         }
 
@@ -506,6 +661,65 @@ fun HomeScreen(
             onConfirmSystem = { viewModel.onIntent(HomeIntent.ConfirmExtractedSystem) }
         )
     }
+
+    if (showSquadModal) {
+        GhostSquadEditDialog(
+            initialNames = state.ghostSquad.map { it.codename },
+            onDismiss = { showSquadModal = false },
+            onSave = { n1, n2, n3 ->
+                showSquadModal = false
+                viewModel.onIntent(
+                    HomeIntent.UpdateGhostSquad(
+                        listOf(
+                            Triple(n1, "STUDY", "#8B5CF6"),
+                            Triple(n2, "WORKOUT", "#10E05B"),
+                            Triple(n3, "READING", "#00E5FF")
+                        )
+                    )
+                )
+            }
+        )
+    }
+}
+
+@Composable
+private fun GhostSquadEditDialog(
+    initialNames: List<String>,
+    onDismiss: () -> Unit,
+    onSave: (String, String, String) -> Unit
+) {
+    var friend1 by remember { mutableStateOf(initialNames.getOrElse(0) { "Lucas M." }) }
+    var friend2 by remember { mutableStateOf(initialNames.getOrElse(1) { "Marina K." }) }
+    var friend3 by remember { mutableStateOf(initialNames.getOrElse(2) { "Rafael T." }) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = LifeOsTheme.SurfaceDark,
+        title = { Text("👻 Configurar Esquadrão Silencioso", color = Color.White, fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = "Até 3 amigos para presença de foco compartilhada sem chat ou distrações:",
+                    color = LifeOsTheme.TextSecondary,
+                    fontSize = 12.sp
+                )
+                OutlinedTextField(value = friend1, onValueChange = { friend1 = it }, label = { Text("Aura 1 · Intelecto") }, singleLine = true)
+                OutlinedTextField(value = friend2, onValueChange = { friend2 = it }, label = { Text("Aura 2 · Fisiologia") }, singleLine = true)
+                OutlinedTextField(value = friend3, onValueChange = { friend3 = it }, label = { Text("Aura 3 · Leitura") }, singleLine = true)
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onSave(friend1, friend2, friend3) },
+                colors = ButtonDefaults.buttonColors(containerColor = LifeOsTheme.CyanFinance)
+            ) {
+                Text("Salvar Auras", color = Color.Black, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancelar", color = LifeOsTheme.TextSecondary) }
+        }
+    )
 }
 
 @Composable

@@ -93,82 +93,58 @@ sleep 6
 check_no_crash "Initial Cold Boot + SQLCipher + Keystore + Seed"
 
 echo "=== [4/7] Capturing All 5 Tabs, Scrolls & Modals ==="
-# 1. Aba Hoje (Topo + Roda da Vida)
+# 1. Aba Hoje (Topo + Roda da Vida + Circadiano / Ghost Squad / RPG Radar)
 navigate_route "home"
 capture_screen "01-hoje-dashboard.png"
 adb shell input swipe 540 1850 540 520 400
 sleep 2
 capture_screen "02-hoje-roda-da-vida.png"
-check_no_crash "Home Tab & Balance Wheel"
+adb shell input swipe 540 1900 540 380 400
+sleep 2
+capture_screen "14-hoje-circadiano-ghost-rpg.png"
+adb shell input swipe 540 1900 540 420 400
+sleep 2
+capture_screen "15-hoje-radar-rpg-hexagonal.png"
+check_no_crash "Home Tab, Circadian Wheel, Ghost Squad & RPG Radar"
 
-# 2. Aba Hábitos + ModalBottomSheet de Detalhes
+# 2. Aba Hábitos (Escudo Anti-Falha + Efeito Composto + 7x52) + ModalBottomSheet
 navigate_route "habits"
 capture_screen "03-habitos-heatmaps.png"
-# Toca no título do primeiro hábito ("Barra Fixa & Calistenia") para abrir o ModalBottomSheet
-adb shell input tap 400 720
+adb shell input swipe 540 1850 540 550 400
+sleep 2
+tap_text_on_screen "Barra Fixa"
 sleep 2
 capture_screen "04-habito-detalhe-bottomsheet.png"
-check_no_crash "Habits Tab & Detail BottomSheet"
+check_no_crash "Habits Tab, Streak Freeze, Compound Flame & Detail BottomSheet"
 adb shell input keyevent 4
 sleep 1
 
-# 3. Aba Treino (Execução + Seu Progresso Fisiológico estilo Kalo)
+# 3. Aba Treino (Execução + Mapa Anatômico de Fadiga + Sobrecarga Progressiva)
 navigate_route "workout"
 capture_screen "05-treino-execucao.png"
 adb shell input swipe 540 1900 540 380 400
 sleep 2
 capture_screen "06-treino-progresso-kalo.png"
-check_no_crash "Workout Tab & Physiology Charts"
+check_no_crash "Workout Tab, Anatomical Fatigue Map & Progressive Overload"
 
-# 4. Aba Estudos (Curva Bezier + Ebbinghaus + Leitura Ativa + OCR)
+# 4. Aba Estudos (Spline Haptic Scrubber + Dente-de-Serra Ebbinghaus + Cone de Incerteza)
 navigate_route "study"
 capture_screen "07-estudos-curva-ebbinghaus.png"
 adb shell input swipe 540 1900 540 380 400
 sleep 2
 capture_screen "08-estudos-leitura-ocr.png"
-check_no_crash "Study Tab & Active Reading"
+check_no_crash "Study Tab, Sawtooth Ebbinghaus & Burndown Cone"
 
-# 5. Aba Carteira (Wallet Metálico + 2s NLP + Burn Matrix)
+# 5. Aba Carteira (Wallet + Anti-Charity + Sankey Fluido + Correlação Multivariada + Burn Matrix)
 navigate_route "finance"
 capture_screen "09-carteira-wallet.png"
-adb shell input swipe 540 1900 540 380 400
+adb shell input swipe 540 1900 540 420 400
+sleep 2
+capture_screen "16-carteira-anticharity-sankey-correlacao.png"
+adb shell input swipe 540 1900 540 420 400
 sleep 2
 capture_screen "10-carteira-burn-matrix.png"
-check_no_crash "Finance Tab & Burn Matrix"
-
-tap_text_on_screen() {
-  local target_label="$1"
-  adb shell uiautomator dump /sdcard/ui_tap.xml >/dev/null 2>&1 || true
-  adb pull /sdcard/ui_tap.xml /tmp/ui_tap.xml >/dev/null 2>&1 || true
-  local coords
-  coords="$(python3 - "$target_label" <<'PY'
-import re, sys, xml.etree.ElementTree as ET
-needle = sys.argv[1].lower()
-try:
-    tree = ET.parse("/tmp/ui_tap.xml")
-    for elem in tree.iter("node"):
-        txt = (elem.attrib.get("text") or "").lower()
-        desc = (elem.attrib.get("content-desc") or "").lower()
-        bounds = elem.attrib.get("bounds") or ""
-        if needle in txt or needle in desc:
-            m = re.match(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", bounds)
-            if m:
-                x1, y1, x2, y2 = map(int, m.groups())
-                print(f"{(x1 + x2) // 2} {(y1 + y2) // 2}")
-                break
-except Exception:
-    pass
-PY
-)"
-  if [[ -n "$coords" ]]; then
-    echo "  -> Tapping '$target_label' at: $coords"
-    # shellcheck disable=SC2086
-    adb shell input tap $coords
-    sleep 2
-  else
-    echo "  [WARN] Could not find '$target_label' in UI dump"
-  fi
-}
+check_no_crash "Finance Tab, Anti-Charity, Sankey, Multivariate & Burn Matrix"
 
 echo "=== [5/7] Testing Live AI Portal Magico (Modal + Extraction + Confirmar Sistema) ==="
 navigate_route "home"

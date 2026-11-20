@@ -1,6 +1,5 @@
 package com.lifeos.ui.components
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -22,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -36,8 +36,7 @@ import androidx.compose.ui.unit.sp
 import com.lifeos.ui.theme.LifeOsTheme
 
 /**
- * Barras verticais em gradiente verde-limão + barra de pico dourada + linha pontilhada de meta
- * (Referência 08 — "Kalo / Your progress").
+ * Componentes fisiológicos auxiliares 100% refatorados para Zero-GC (Modifier.drawWithCache).
  */
 @Composable
 fun WeeklyGradientBarsChart(
@@ -50,52 +49,60 @@ fun WeeklyGradientBarsChart(
     val peakIdx = safeValues.indices.maxByOrNull { safeValues[it] } ?: 4
 
     Column(modifier = modifier) {
-        Canvas(
+        Spacer(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(108.dp)
-        ) {
-            val maxVal = (safeValues.maxOrNull() ?: 1f).coerceAtLeast(1f)
-            val targetY = size.height * (1f - targetLineRatio.coerceIn(0.15f, 0.9f))
+                .drawWithCache {
+                    val maxVal = (safeValues.maxOrNull() ?: 1f).coerceAtLeast(1f)
+                    val targetY = size.height * (1f - targetLineRatio.coerceIn(0.15f, 0.9f))
+                    val dashEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f), 0f)
+                    val slotWidth = size.width / 7f
+                    val barWidth = (slotWidth * 0.28f).coerceAtLeast(8.dp.toPx())
+                    val corner = CornerRadius(barWidth / 2f, barWidth / 2f)
+                    val strokePx = 1.dp.toPx()
 
-            drawLine(
-                color = LifeOsTheme.TextMuted.copy(alpha = 0.6f),
-                start = Offset(0f, targetY),
-                end = Offset(size.width, targetY),
-                strokeWidth = 1.dp.toPx(),
-                pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f), 0f)
-            )
+                    val barGeometries = Array(7) { idx ->
+                        val ratio = (safeValues[idx] / maxVal).coerceIn(0.15f, 1f)
+                        val barHeight = size.height * ratio * 0.92f
+                        val left = (idx * slotWidth) + (slotWidth - barWidth) / 2f
+                        val top = size.height - barHeight
+                        val brush = if (idx == peakIdx) {
+                            Brush.verticalGradient(
+                                colors = listOf(Color(0xFFFFD166), Color(0xFFB68924)),
+                                startY = top,
+                                endY = size.height
+                            )
+                        } else {
+                            Brush.verticalGradient(
+                                colors = listOf(Color(0xFFB7E856), Color(0xFF4F6F1E)),
+                                startY = top,
+                                endY = size.height
+                            )
+                        }
+                        Triple(Offset(left, top), Size(barWidth, barHeight), brush)
+                    }
 
-            val slotWidth = size.width / 7f
-            val barWidth = (slotWidth * 0.28f).coerceAtLeast(8.dp.toPx())
-            val corner = CornerRadius(barWidth / 2f, barWidth / 2f)
+                    onDrawBehind {
+                        drawLine(
+                            color = LifeOsTheme.TextMuted.copy(alpha = 0.6f),
+                            start = Offset(0f, targetY),
+                            end = Offset(size.width, targetY),
+                            strokeWidth = strokePx,
+                            pathEffect = dashEffect
+                        )
 
-            safeValues.forEachIndexed { idx, value ->
-                val ratio = (value / maxVal).coerceIn(0.15f, 1f)
-                val barHeight = size.height * ratio * 0.92f
-                val left = (idx * slotWidth) + (slotWidth - barWidth) / 2f
-                val top = size.height - barHeight
-                val brush = if (idx == peakIdx) {
-                    Brush.verticalGradient(
-                        colors = listOf(Color(0xFFFFD166), Color(0xFFB68924)),
-                        startY = top,
-                        endY = size.height
-                    )
-                } else {
-                    Brush.verticalGradient(
-                        colors = listOf(Color(0xFFB7E856), Color(0xFF4F6F1E)),
-                        startY = top,
-                        endY = size.height
-                    )
+                        barGeometries.forEach { (topLeft, barSize, brush) ->
+                            drawRoundRect(
+                                brush = brush,
+                                topLeft = topLeft,
+                                size = barSize,
+                                cornerRadius = corner
+                            )
+                        }
+                    }
                 }
-                drawRoundRect(
-                    brush = brush,
-                    topLeft = Offset(left, top),
-                    size = Size(barWidth, barHeight),
-                    cornerRadius = corner
-                )
-            }
-        }
+        )
         Spacer(modifier = Modifier.height(6.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -108,9 +115,6 @@ fun WeeklyGradientBarsChart(
     }
 }
 
-/**
- * Linha de tendência semanal com pontos conectados (Referência 08 — "Weight / Load trend").
- */
 @Composable
 fun WeeklyTrendDotsChart(
     points: List<Float>,
@@ -121,48 +125,54 @@ fun WeeklyTrendDotsChart(
     val safePoints = if (points.size >= 7) points.take(7) else listOf(10f, 10f, 11f, 11.5f, 12f, 12f, 12.5f)
 
     Column(modifier = modifier) {
-        Canvas(
+        Spacer(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(78.dp)
-        ) {
-            val minV = (safePoints.minOrNull() ?: 0f) - 1f
-            val maxV = (safePoints.maxOrNull() ?: 1f) + 1f
-            val span = (maxV - minV).coerceAtLeast(1f)
-            val slotWidth = size.width / 7f
+                .drawWithCache {
+                    val minV = (safePoints.minOrNull() ?: 0f) - 1f
+                    val maxV = (safePoints.maxOrNull() ?: 1f) + 1f
+                    val span = (maxV - minV).coerceAtLeast(1f)
+                    val slotWidth = size.width / 7f
+                    val gridStroke = 1.dp.toPx()
+                    val lineStroke = 2.2.dp.toPx()
+                    val dotRadius = 4.dp.toPx()
 
-            val offsets = safePoints.mapIndexed { idx, v ->
-                val norm = ((v - minV) / span).coerceIn(0f, 1f)
-                Offset(
-                    x = idx * slotWidth + slotWidth / 2f,
-                    y = 10.dp.toPx() + (size.height - 20.dp.toPx()) * (1f - norm)
-                )
-            }
+                    val offsets = Array(safePoints.size) { idx ->
+                        val norm = ((safePoints[idx] - minV) / span).coerceIn(0f, 1f)
+                        Offset(
+                            x = idx * slotWidth + slotWidth / 2f,
+                            y = 10.dp.toPx() + (size.height - 20.dp.toPx()) * (1f - norm)
+                        )
+                    }
 
-            for (row in 0..2) {
-                val y = size.height * (row / 2f)
-                drawLine(
-                    color = LifeOsTheme.BorderSubtle,
-                    start = Offset(0f, y),
-                    end = Offset(size.width, y),
-                    strokeWidth = 1.dp.toPx()
-                )
-            }
+                    onDrawBehind {
+                        for (row in 0..2) {
+                            val y = size.height * (row / 2f)
+                            drawLine(
+                                color = LifeOsTheme.BorderSubtle,
+                                start = Offset(0f, y),
+                                end = Offset(size.width, y),
+                                strokeWidth = gridStroke
+                            )
+                        }
 
-            for (i in 0 until offsets.lastIndex) {
-                drawLine(
-                    color = lineColor,
-                    start = offsets[i],
-                    end = offsets[i + 1],
-                    strokeWidth = 2.2.dp.toPx(),
-                    cap = StrokeCap.Round
-                )
-            }
+                        for (i in 0 until offsets.lastIndex) {
+                            drawLine(
+                                color = lineColor,
+                                start = offsets[i],
+                                end = offsets[i + 1],
+                                strokeWidth = lineStroke,
+                                cap = StrokeCap.Round
+                            )
+                        }
 
-            offsets.forEach { pt ->
-                drawCircle(color = lineColor, radius = 4.dp.toPx(), center = pt)
-            }
-        }
+                        offsets.forEach { pt ->
+                            drawCircle(color = lineColor, radius = dotRadius, center = pt)
+                        }
+                    }
+                }
+        )
         Spacer(modifier = Modifier.height(6.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -175,69 +185,68 @@ fun WeeklyTrendDotsChart(
     }
 }
 
-/**
- * Anel luminoso circular de Streak com chama central (Referência 08 — "Streak 12 days").
- */
 @Composable
 fun CircularStreakRing(
     progress: Float,
     modifier: Modifier = Modifier.size(64.dp)
 ) {
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
-        Canvas(modifier = Modifier.size(60.dp)) {
-            val stroke = 5.5.dp.toPx()
-            drawCircle(
-                color = Color(0xFF232018),
-                style = Stroke(width = stroke)
-            )
-            drawArc(
-                color = LifeOsTheme.AmberFocus,
-                startAngle = -90f,
-                sweepAngle = (360f * progress.coerceIn(0.12f, 1f)),
-                useCenter = false,
-                style = Stroke(width = stroke, cap = StrokeCap.Round)
-            )
-        }
+        Spacer(
+            modifier = Modifier
+                .size(60.dp)
+                .drawWithCache {
+                    val strokeStyle = Stroke(width = 5.5.dp.toPx(), cap = StrokeCap.Round)
+                    val sweep = 360f * progress.coerceIn(0.12f, 1f)
+                    onDrawBehind {
+                        drawCircle(color = Color(0xFF232018), style = strokeStyle)
+                        drawArc(
+                            color = LifeOsTheme.AmberFocus,
+                            startAngle = -90f,
+                            sweepAngle = sweep,
+                            useCenter = false,
+                            style = strokeStyle
+                        )
+                    }
+                }
+        )
         Text("🔥", fontSize = 20.sp)
     }
 }
 
-/**
- * Donut tricolor de equilíbrio de estímulos / domínios (Referência 08 — "Macro balance").
- */
 @Composable
 fun MacroDomainDonutRing(
     fractions: List<Float> = listOf(0.42f, 0.33f, 0.25f),
     colors: List<Color> = listOf(Color(0xFFB7E856), LifeOsTheme.GreenHealth, LifeOsTheme.AmberFocus),
     modifier: Modifier = Modifier.size(48.dp)
 ) {
-    Canvas(modifier = modifier) {
-        val stroke = 6.dp.toPx()
-        val sum = fractions.sum().coerceAtLeast(0.01f)
-        var start = -90f
-        fractions.forEachIndexed { idx, value ->
-            val sweep = 360f * (value / sum)
-            drawArc(
-                color = colors[idx % colors.size],
-                startAngle = start,
-                sweepAngle = (sweep - 6f).coerceAtLeast(8f),
-                useCenter = false,
-                style = Stroke(width = stroke, cap = StrokeCap.Round)
-            )
-            start += sweep
+    Spacer(
+        modifier = modifier.drawWithCache {
+            val strokeStyle = Stroke(width = 6.dp.toPx(), cap = StrokeCap.Round)
+            val sum = fractions.sum().coerceAtLeast(0.01f)
+            onDrawBehind {
+                var start = -90f
+                fractions.forEachIndexed { idx, value ->
+                    val sweep = 360f * (value / sum)
+                    drawArc(
+                        color = colors[idx % colors.size],
+                        startAngle = start,
+                        sweepAngle = (sweep - 6f).coerceAtLeast(8f),
+                        useCenter = false,
+                        style = strokeStyle
+                    )
+                    start += sweep
+                }
+            }
         }
-    }
+    )
 }
 
-/**
- * Card de celebração e monitoramento semanal de Streak com holofote radial laranja e 7 círculos
- * (Referências 06 "Days Streak" e 07 "Steps/Streak Widget").
- */
 @Composable
 fun StreakWeekSpotlightBanner(
     streakDays: Int,
     weekCompletedFlags: List<Boolean>,
     progressPercent: Int,
+    shieldBadgeText: String? = null,
     modifier: Modifier = Modifier.fillMaxWidth()
 ) {
     val dayNames = listOf("Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom")
@@ -282,12 +291,22 @@ fun StreakWeekSpotlightBanner(
                     }
                 }
             }
-            Text(
-                text = "$progressPercent%",
-                color = LifeOsTheme.GreenHealth,
-                fontWeight = FontWeight.Black,
-                fontSize = 18.sp
-            )
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = "$progressPercent%",
+                    color = LifeOsTheme.GreenHealth,
+                    fontWeight = FontWeight.Black,
+                    fontSize = 18.sp
+                )
+                if (!shieldBadgeText.isNullOrBlank()) {
+                    Text(
+                        text = shieldBadgeText,
+                        color = LifeOsTheme.CyanFinance,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(14.dp))

@@ -56,7 +56,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lifeos.ui.components.AntiCharityCommitmentBanner
 import com.lifeos.ui.components.BentoCard
+import com.lifeos.ui.components.FluidSankeyCashflowChart
+import com.lifeos.ui.components.MultivariateCorrelationScatterChart
 import com.lifeos.ui.components.SegmentedCategoryBar
 import com.lifeos.ui.components.SpendingBurnMatrix
 import com.lifeos.ui.theme.LifeOsTheme
@@ -82,6 +85,7 @@ fun FinanceScreen(viewModel: FinanceViewModel) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val ov = state.overview
     var showAddTxDialog by remember { mutableStateOf(false) }
+    var showContractDialog by remember { mutableStateOf(false) }
     var quickInput by remember { mutableStateOf("") }
     var searchTx by remember { mutableStateOf("") }
 
@@ -356,23 +360,66 @@ fun FinanceScreen(viewModel: FinanceViewModel) {
             }
         }
 
-        // 5. Inteligência Cruzada (Treino × Alimentação)
-        if (ov.behavioralCorrelationInsight.isNotBlank()) {
-            item {
-                BentoCard(borderColor = LifeOsTheme.AmberFocus.copy(alpha = 0.55f)) {
-                    Text(
-                        text = "🧠 INTELIGÊNCIA CRUZADA (TREINO × FINANÇAS)",
-                        color = LifeOsTheme.AmberFocus,
-                        style = MaterialTheme.typography.labelSmall
-                    )
+        // 5. Contrato de Compromisso Anti-Charity (Pilar 5.5)
+        item {
+            val ac = state.antiCharityContract
+            AntiCharityCommitmentBanner(
+                stakeAmount = ac.stakeAmount,
+                currencyCode = ac.currencyCode,
+                institutionName = ac.institutionName,
+                weeklyTargetRatio = ac.weeklyTargetRatio,
+                currentWeekRatio = ac.currentWeekRatio,
+                isActive = ac.isActive,
+                isAtRisk = ac.isAtRisk,
+                statusSummary = ac.statusSummary,
+                onConfigureContract = { showContractDialog = true }
+            )
+        }
+
+        // 5.2. Diagrama de Fluxo de Sankey Fluido (Pilar 6.8)
+        item {
+            val sk = state.sankeyBreakdown
+            BentoCard {
+                Text("DIAGRAMA DE FLUXO DE SANKEY FLUIDO", color = LifeOsTheme.CyanFinance, style = MaterialTheme.typography.labelSmall)
+                Text("Ramificação da Renda Líquida", color = Color.White, fontWeight = FontWeight.Black, fontSize = 17.sp)
+                Spacer(modifier = Modifier.height(10.dp))
+                FluidSankeyCashflowChart(
+                    netIncome = sk.netIncome,
+                    investmentsAmount = sk.investmentsAmount,
+                    fixedCostsAmount = sk.fixedEssentialsAmount,
+                    leakageAmount = sk.capitalLeakageAmount,
+                    currencyCode = sk.currencyCode
+                )
+            }
+        }
+
+        // 5.5. Matriz de Correlação Multivariada da IA (Pilar 6.10)
+        item {
+            BentoCard(borderColor = LifeOsTheme.AmberFocus.copy(alpha = 0.50f)) {
+                Text(
+                    text = "🧠 MATRIZ DE CORRELAÇÃO MULTIVARIADA DA IA",
+                    color = LifeOsTheme.AmberFocus,
+                    style = MaterialTheme.typography.labelSmall
+                )
+                Text(
+                    text = "Sono & Treino × Gastos Impulsivos (r = -0.94)",
+                    color = Color.White,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Black
+                )
+                if (ov.behavioralCorrelationInsight.isNotBlank()) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = ov.behavioralCorrelationInsight,
-                        color = Color.White,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium
+                        color = LifeOsTheme.TextSecondary,
+                        fontSize = 12.sp
                     )
                 }
+                Spacer(modifier = Modifier.height(10.dp))
+                MultivariateCorrelationScatterChart(
+                    xyNormalizedPairs = state.multivariatePoints.map { it.xNormalized to it.yNormalized },
+                    positiveFlags = state.multivariatePoints.map { it.isPositiveCluster }
+                )
             }
         }
 
@@ -492,6 +539,73 @@ fun FinanceScreen(viewModel: FinanceViewModel) {
             }
         )
     }
+
+    if (showContractDialog) {
+        val ac = state.antiCharityContract
+        ConfigureAntiCharityDialog(
+            initialStake = ac.stakeAmount,
+            initialInstitution = ac.institutionName,
+            initialTargetPct = (ac.weeklyTargetRatio * 100).toInt(),
+            onDismiss = { showContractDialog = false },
+            onSave = { stake, inst, pct ->
+                showContractDialog = false
+                viewModel.onIntent(
+                    FinanceIntent.SaveAntiCharityContract(
+                        weeklyTargetRatio = (pct / 100f).coerceIn(0.5f, 1.0f),
+                        stakeAmount = stake,
+                        institutionName = inst,
+                        isActive = true
+                    )
+                )
+            }
+        )
+    }
+}
+
+@Composable
+private fun ConfigureAntiCharityDialog(
+    initialStake: Double,
+    initialInstitution: String,
+    initialTargetPct: Int,
+    onDismiss: () -> Unit,
+    onSave: (Double, String, Int) -> Unit
+) {
+    var stakeInput by remember { mutableStateOf(initialStake.toInt().toString()) }
+    var institutionInput by remember { mutableStateOf(initialInstitution) }
+    var targetPctInput by remember { mutableStateOf(initialTargetPct.toString()) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = LifeOsTheme.SurfaceDark,
+        title = { Text("⚖️ Contrato Anti-Charity", color = Color.White, fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = "Vincule uma caução financeira semanal para eliminar a procrastinação por aversão à perda:",
+                    color = LifeOsTheme.TextSecondary,
+                    fontSize = 12.sp
+                )
+                OutlinedTextField(value = stakeInput, onValueChange = { stakeInput = it }, label = { Text("Caução Semanal") }, singleLine = true)
+                OutlinedTextField(value = institutionInput, onValueChange = { institutionInput = it }, label = { Text("Instituição Destino") }, singleLine = true)
+                OutlinedTextField(value = targetPctInput, onValueChange = { targetPctInput = it }, label = { Text("Meta Mínima Semanal (%)") }, singleLine = true)
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val stake = stakeInput.toDoubleOrNull() ?: initialStake
+                    val pct = targetPctInput.toIntOrNull() ?: initialTargetPct
+                    onSave(stake, institutionInput, pct)
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = LifeOsTheme.AmberFocus)
+            ) {
+                Text("Assinar Contrato", color = Color.Black, fontWeight = FontWeight.Black)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancelar", color = LifeOsTheme.TextSecondary) }
+        }
+    )
 }
 
 @Composable
