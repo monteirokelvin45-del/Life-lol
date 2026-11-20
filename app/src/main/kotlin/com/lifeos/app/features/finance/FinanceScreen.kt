@@ -51,11 +51,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lifeos.ui.components.BentoCard
-import com.lifeos.ui.components.CategorySliceUi
 import com.lifeos.ui.components.SegmentedCategoryBar
 import com.lifeos.ui.components.SpendingBurnMatrix
 import com.lifeos.ui.theme.LifeOsTheme
 import java.util.Locale
+
+private data class CategoryLegendRow(
+    val label: String,
+    val amountFormatted: String,
+    val fraction: Float,
+    val color: Color
+)
 
 private val categoryPalette = listOf(
     LifeOsTheme.CyanFinance,
@@ -86,7 +92,7 @@ fun FinanceScreen(viewModel: FinanceViewModel) {
     }
 
     val categorySlicesUi = ov.categorySlices.mapIndexed { idx, s ->
-        CategorySliceUi(
+        CategoryLegendRow(
             label = s.category,
             amountFormatted = String.format(Locale.US, "%.0f %s", s.totalAmount, ov.currencyCode),
             fraction = s.fraction,
@@ -213,13 +219,13 @@ fun FinanceScreen(viewModel: FinanceViewModel) {
             }
         }
 
-        // 3. Resumo + Barra Segmentada Horizontal (Referência 08)
+        // 3. Resumo + Barra Segmentada Horizontal (Referência 01 & 08)
         item {
             BentoCard {
                 Text("SALDO LÍQUIDO MENSAL", color = LifeOsTheme.TextSecondary, style = MaterialTheme.typography.labelSmall)
                 Text(
                     text = String.format(Locale.US, "%.2f %s", ov.netBalanceMonth, ov.currencyCode),
-                    color = if (ov.netBalanceMonth >= 0) LifeOsTheme.GreenHealth else LifeOsTheme.CrimsonExpense,
+                    color = if (ov.netBalanceMonth >= 0) LifeOsTheme.GreenHealth else LifeOsTheme.RedExpense,
                     fontSize = 30.sp,
                     fontWeight = FontWeight.Black
                 )
@@ -240,7 +246,7 @@ fun FinanceScreen(viewModel: FinanceViewModel) {
                         Text("Saídas", color = LifeOsTheme.TextSecondary, fontSize = 12.sp)
                         Text(
                             text = String.format(Locale.US, "-%.2f %s", ov.totalExpenseMonth, ov.currencyCode),
-                            color = LifeOsTheme.CrimsonExpense,
+                            color = LifeOsTheme.RedExpense,
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -248,7 +254,10 @@ fun FinanceScreen(viewModel: FinanceViewModel) {
 
                 if (categorySlicesUi.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(16.dp))
-                    SegmentedCategoryBar(slices = categorySlicesUi)
+                    SegmentedCategoryBar(
+                        fractions = categorySlicesUi.map { it.fraction },
+                        colors = categoryPalette
+                    )
                     Spacer(modifier = Modifier.height(10.dp))
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         categorySlicesUi.forEach { slice ->
@@ -275,21 +284,21 @@ fun FinanceScreen(viewModel: FinanceViewModel) {
             }
         }
 
-        // 4. Matriz Step-Chart (Referência 10)
+        // 4. Matriz Step-Chart (Referência 03 & 10)
         item {
             BentoCard {
                 Text("Ritmo de Gastos: Este Mês vs Mês Anterior", color = Color.White, style = MaterialTheme.typography.titleMedium)
                 Text(
-                    text = "Linha degrau sólida = acumulado atual · Pontilhada = mês anterior",
+                    text = "Linha degrau sólida = acumulado atual · Blocos de fundo = mês anterior",
                     color = LifeOsTheme.TextSecondary,
                     fontSize = 12.sp
                 )
                 Spacer(modifier = Modifier.height(14.dp))
                 SpendingBurnMatrix(
-                    currentMonthDailyCumulative = ov.burnMatrixPoints
+                    currentMonthCumulative = ov.burnMatrixPoints
                         .takeWhile { it.currentMonthCumulative > 0.0 || it.dayOfMonth == 1 }
-                        .map { it.currentMonthCumulative.toFloat() },
-                    previousMonthDailyCumulative = ov.burnMatrixPoints.map { it.previousMonthCumulative.toFloat() }
+                        .map { it.currentMonthCumulative },
+                    previousMonthCumulative = ov.burnMatrixPoints.map { it.previousMonthCumulative }
                 )
             }
         }

@@ -156,7 +156,7 @@ fun StudyScreen(viewModel: StudyViewModel) {
                                     OutlinedButton(
                                         onClick = { viewModel.onIntent(StudyIntent.ReviewTopic(topic.id, rememberedWell = false)) }
                                     ) {
-                                        Text("Esqueci (Reset 1d)", color = LifeOsTheme.CrimsonExpense, fontSize = 12.sp)
+                                        Text("Esqueci (Reset 1d)", color = LifeOsTheme.RedExpense, fontSize = 12.sp)
                                     }
                                 }
                             }
