@@ -1,6 +1,10 @@
 name: Android Emulator E2E & Screenshots
 
 on:
+  push:
+    branches: [ "**" ]
+    paths-ignore:
+      - "docs/emulator-screenshots/**"
   workflow_dispatch:
 
 permissions:
