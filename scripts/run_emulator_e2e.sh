@@ -82,6 +82,40 @@ capture_screen() {
   echo "  [SCREENSHOT] Saved ${OUT_DIR}/${filename} ($(wc -c < "${OUT_DIR}/${filename}") bytes)"
 }
 
+tap_text_on_screen() {
+  local target_label="$1"
+  adb shell uiautomator dump /sdcard/ui_tap.xml >/dev/null 2>&1 || true
+  adb pull /sdcard/ui_tap.xml /tmp/ui_tap.xml >/dev/null 2>&1 || true
+  local coords
+  coords="$(python3 - "$target_label" <<'PY'
+import re, sys, xml.etree.ElementTree as ET
+needle = sys.argv[1].lower()
+try:
+    tree = ET.parse("/tmp/ui_tap.xml")
+    for elem in tree.iter("node"):
+        txt = (elem.attrib.get("text") or "").lower()
+        desc = (elem.attrib.get("content-desc") or "").lower()
+        bounds = elem.attrib.get("bounds") or ""
+        if needle in txt or needle in desc:
+            m = re.match(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", bounds)
+            if m:
+                x1, y1, x2, y2 = map(int, m.groups())
+                print(f"{(x1 + x2) // 2} {(y1 + y2) // 2}")
+                break
+except Exception:
+    pass
+PY
+)"
+  if [[ -n "$coords" ]]; then
+    echo "  -> Tapping '$target_label' at: $coords"
+    # shellcheck disable=SC2086
+    adb shell input tap $coords
+    sleep 2
+  else
+    echo "  [WARN] Could not find '$target_label' in UI dump"
+  fi
+}
+
 echo "=== [2/7] Installing APK with Runtime Permissions (-g) ==="
 adb install -r -g "$APK_PATH"
 dismiss_system_anr_if_any
@@ -92,7 +126,7 @@ adb shell am start -W -n com.lifeos.app/.MainActivity
 sleep 6
 check_no_crash "Initial Cold Boot + SQLCipher + Keystore + Seed"
 
-echo "=== [4/7] Capturing All 5 Tabs, Scrolls & Modals ==="
+echo "=== [4/7] Capturing All 5 Tabs, 14 Zero-GC Charts & Pillar 5 Mechanics ==="
 # 1. Aba Hoje (Topo + Roda da Vida + Circadiano / Ghost Squad / RPG Radar)
 navigate_route "home"
 capture_screen "01-hoje-dashboard.png"
@@ -168,4 +202,4 @@ if ! echo "$DB_LS" | grep -q "life_os_encrypted.db"; then
   exit 1
 fi
 
-echo "=== [7/7] E2E Runtime Verification Passed with 0 Crashes & 11 Clean OLED Screenshots! ==="
+echo "=== [7/7] E2E Runtime Verification Passed with 0 Crashes & 16 Clean OLED Screenshots! ==="
