@@ -28,7 +28,7 @@ import javax.inject.Singleton
  * - `.md` / `.txt`: leitura direta UTF-8.
  * - `.docx`: descompactação nativa OpenXML (`word/document.xml`) sem peso de bibliotecas externas.
  * - `.pdf`: renderização nativa via `PdfRenderer` + reconhecimento óptico ML Kit.
- * - `image/*`: OCR direto de páginas de livros físicos ou recibos via ML Kit.
+ * - Imagens (`PNG`/`JPG`): OCR direto de páginas de livros físicos ou recibos via ML Kit.
  */
 @Singleton
 class DocumentTextExtractor @Inject constructor(
