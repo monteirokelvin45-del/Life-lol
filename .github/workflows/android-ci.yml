@@ -21,10 +21,16 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup JDK 17 (Temurin)
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
+
+      - name: Accept Android SDK Licenses
+        run: |
+          if [ -n "$ANDROID_HOME" ] && [ -x "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" ]; then
+            yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          fi
 
       - name: Setup Gradle 8.5
         uses: gradle/actions/setup-gradle@v4
@@ -32,7 +38,17 @@ jobs:
           gradle-version: "8.5"
 
       - name: Run Unit Tests & Assemble Debug APK
-        run: gradle testDebugUnitTest :app:assembleDebug --stacktrace --no-daemon
+        run: |
+          set +e
+          gradle testDebugUnitTest :app:assembleDebug --no-daemon > gradle_build.log 2>&1
+          STATUS=$?
+          cat gradle_build.log
+          if [ $STATUS -ne 0 ]; then
+            grep -E '(^e: |FAILURE:|^\* What went wrong:|^> |Exception|Error)' gradle_build.log | tail -n 30 | while IFS= read -r line; do
+              echo "::error title=GradleBuild::${line}"
+            done
+            exit $STATUS
+          fi
 
       - name: Upload Life OS Debug APK
         uses: actions/upload-artifact@v4

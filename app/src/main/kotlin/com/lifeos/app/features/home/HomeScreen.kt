@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+
 package com.lifeos.app.features.home
 
 import androidx.activity.compose.rememberLauncherForActivityResult
