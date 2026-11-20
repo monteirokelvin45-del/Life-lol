@@ -8,6 +8,8 @@ import android.speech.RecognizerIntent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,6 +19,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -27,6 +30,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Mic
+import androidx.compose.material.icons.rounded.NotificationsNone
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -45,6 +50,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -64,11 +70,11 @@ private data class CategoryLegendRow(
 )
 
 private val categoryPalette = listOf(
-    LifeOsTheme.CyanFinance,
     LifeOsTheme.PurpleStudy,
-    LifeOsTheme.OrangeStreak,
+    LifeOsTheme.RedExpense,
     LifeOsTheme.GreenHealth,
-    LifeOsTheme.AmberFocus
+    LifeOsTheme.AmberFocus,
+    LifeOsTheme.CyanFinance
 )
 
 @Composable
@@ -77,6 +83,7 @@ fun FinanceScreen(viewModel: FinanceViewModel) {
     val ov = state.overview
     var showAddTxDialog by remember { mutableStateOf(false) }
     var quickInput by remember { mutableStateOf("") }
+    var searchTx by remember { mutableStateOf("") }
 
     val voiceExpenseLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -100,6 +107,17 @@ fun FinanceScreen(viewModel: FinanceViewModel) {
         )
     }
 
+    val filteredTransactions = remember(ov.recentTransactions, searchTx) {
+        if (searchTx.isBlank()) {
+            ov.recentTransactions
+        } else {
+            ov.recentTransactions.filter {
+                it.category.contains(searchTx, ignoreCase = true) ||
+                    (it.note?.contains(searchTx, ignoreCase = true) == true)
+            }
+        }
+    }
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -107,36 +125,175 @@ fun FinanceScreen(viewModel: FinanceViewModel) {
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
+        // 1. Barra Superior estilo Wallet (Referência 01: Avatar + Search Pill + Ícones)
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Column {
-                    Text(
-                        text = "14:00 · GESTÃO ATRITO ZERO (SQLCIPHER AES-256)",
-                        color = LifeOsTheme.CyanFinance,
-                        style = MaterialTheme.typography.labelSmall
-                    )
-                    Text(
-                        text = "Finanças & Caixa",
-                        color = Color.White,
-                        style = MaterialTheme.typography.headlineLarge
-                    )
-                }
-                Button(
-                    onClick = { showAddTxDialog = true },
-                    colors = ButtonDefaults.buttonColors(containerColor = LifeOsTheme.CyanFinance)
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(LifeOsTheme.SurfaceElevated),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Rounded.Add, contentDescription = null, tint = Color.Black)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Manual", color = Color.Black, fontWeight = FontWeight.Bold)
+                    Text("⚡", fontSize = 18.sp)
+                }
+
+                OutlinedTextField(
+                    value = searchTx,
+                    onValueChange = { searchTx = it },
+                    leadingIcon = {
+                        Icon(Icons.Rounded.Search, contentDescription = null, tint = LifeOsTheme.TextSecondary)
+                    },
+                    placeholder = { Text("Search", color = LifeOsTheme.TextSecondary, fontSize = 13.sp) },
+                    singleLine = true,
+                    shape = RoundedCornerShape(20.dp),
+                    modifier = Modifier.weight(1f)
+                )
+
+                IconButton(
+                    onClick = { showAddTxDialog = true },
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(LifeOsTheme.SurfaceElevated)
+                ) {
+                    Icon(Icons.Rounded.NotificationsNone, contentDescription = null, tint = Color.White)
                 }
             }
         }
 
-        // 1. Barra Relâmpago de 2 Segundos ("Almoço 38 débito" por texto ou voz)
+        // 2. Hero Card Metálico Escuro "Wallet" (Referência 01)
+        item {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(28.dp))
+                    .background(
+                        Brush.linearGradient(
+                            colors = listOf(
+                                Color(0xFF232429),
+                                Color(0xFF111215),
+                                Color(0xFF0A0A0C)
+                            )
+                        )
+                    )
+                    .border(1.dp, Color(0xFF2A2B30), RoundedCornerShape(28.dp))
+                    .padding(22.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Wallet", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                    Icon(
+                        imageVector = Icons.Rounded.Add,
+                        contentDescription = "Novo lançamento",
+                        tint = Color.White,
+                        modifier = Modifier
+                            .size(22.dp)
+                            .clickable { showAddTxDialog = true }
+                    )
+                }
+                Spacer(modifier = Modifier.height(6.dp))
+                Text("Life OS Vault · SQLCipher", color = LifeOsTheme.TextSecondary, fontSize = 17.sp)
+
+                Spacer(modifier = Modifier.height(42.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    Column {
+                        Text(
+                            text = String.format(Locale.US, "%.2f %s", ov.netBalanceMonth, ov.currencyCode),
+                            color = Color.White,
+                            fontSize = 30.sp,
+                            fontWeight = FontWeight.Black
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text("Account ** 5087", color = LifeOsTheme.TextSecondary, fontSize = 12.sp)
+                    }
+
+                    Column(horizontalAlignment = Alignment.End) {
+                        Row {
+                            Box(
+                                modifier = Modifier
+                                    .size(18.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFFEB001B))
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .offset(x = (-6).dp)
+                                    .size(18.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFFF79E1B).copy(alpha = 0.9f))
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text("**** 3264", color = LifeOsTheme.TextSecondary, fontSize = 12.sp)
+                    }
+                }
+            }
+        }
+
+        // 3. Linha Bento Dupla: "Spending" (Pílulas Multicoloridas) + "Top Canais" (Referência 01)
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                BentoCard(modifier = Modifier.weight(1.1f)) {
+                    Text("Spending", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    Text(
+                        text = String.format(Locale.US, "-%.0f %s no mês", ov.totalExpenseMonth, ov.currencyCode),
+                        color = LifeOsTheme.TextSecondary,
+                        fontSize = 11.sp
+                    )
+                    Spacer(modifier = Modifier.height(14.dp))
+                    SegmentedCategoryBar(
+                        fractions = if (categorySlicesUi.isNotEmpty()) {
+                            categorySlicesUi.map { it.fraction }
+                        } else {
+                            listOf(0.42f, 0.22f, 0.12f, 0.16f, 0.08f)
+                        },
+                        colors = categoryPalette
+                    )
+                }
+
+                BentoCard(modifier = Modifier.weight(0.95f)) {
+                    Text("Canais Ativos", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    Text("Débito · M-Pesa", color = LifeOsTheme.TextSecondary, fontSize = 11.sp)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        listOf(
+                            "🍔" to Color(0xFF1F1214),
+                            "🏠" to Color(0xFFF2F2F7),
+                            "📚" to Color(0xFF141418),
+                            "⚡" to Color(0xFFD91E2A)
+                        ).forEach { (emoji, bg) ->
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(bg),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(emoji, fontSize = 14.sp)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 4. Barra Relâmpago de 2 Segundos ("Almoço 38 débito" por texto ou voz)
         item {
             BentoCard(borderColor = LifeOsTheme.CyanFinance.copy(alpha = 0.55f)) {
                 Text(
@@ -199,7 +356,7 @@ fun FinanceScreen(viewModel: FinanceViewModel) {
             }
         }
 
-        // 2. Card de Cruzamento Comportamental (Treino × Gastos em Alimentação)
+        // 5. Inteligência Cruzada (Treino × Alimentação)
         if (ov.behavioralCorrelationInsight.isNotBlank()) {
             item {
                 BentoCard(borderColor = LifeOsTheme.AmberFocus.copy(alpha = 0.55f)) {
@@ -219,97 +376,76 @@ fun FinanceScreen(viewModel: FinanceViewModel) {
             }
         }
 
-        // 3. Resumo + Barra Segmentada Horizontal (Referência 01 & 08)
+        // 6. Card Pixelado Hero "$123 today" (Referência 03 exata!)
         item {
+            val prevTotal = ov.burnMatrixPoints.lastOrNull()?.previousMonthCumulative ?: 0.0
+            val currTotal = ov.totalExpenseMonth
+            val spendingLess = currTotal <= prevTotal || prevTotal == 0.0
+
             BentoCard {
-                Text("SALDO LÍQUIDO MENSAL", color = LifeOsTheme.TextSecondary, style = MaterialTheme.typography.labelSmall)
-                Text(
-                    text = String.format(Locale.US, "%.2f %s", ov.netBalanceMonth, ov.currencyCode),
-                    color = if (ov.netBalanceMonth >= 0) LifeOsTheme.GreenHealth else LifeOsTheme.RedExpense,
-                    fontSize = 30.sp,
-                    fontWeight = FontWeight.Black
-                )
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = String.format(Locale.US, "%.0f %s", ov.spentToday, ov.currencyCode),
+                        color = Color.White,
+                        fontSize = 40.sp,
+                        fontWeight = FontWeight.Black
+                    )
+                    Text(
+                        text = "today",
+                        color = LifeOsTheme.TextSecondary,
+                        fontSize = 15.sp
+                    )
+                }
+
                 Spacer(modifier = Modifier.height(10.dp))
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Column {
-                        Text("Receitas", color = LifeOsTheme.TextSecondary, fontSize = 12.sp)
-                        Text(
-                            text = String.format(Locale.US, "+%.2f %s", ov.totalIncomeMonth, ov.currencyCode),
-                            color = LifeOsTheme.GreenHealth,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text("Saídas", color = LifeOsTheme.TextSecondary, fontSize = 12.sp)
-                        Text(
-                            text = String.format(Locale.US, "-%.2f %s", ov.totalExpenseMonth, ov.currencyCode),
-                            color = LifeOsTheme.RedExpense,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-
-                if (categorySlicesUi.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    SegmentedCategoryBar(
-                        fractions = categorySlicesUi.map { it.fraction },
-                        colors = categoryPalette
+                    Text(
+                        text = String.format(Locale.US, "Este mês: %.0f %s", currTotal, ov.currencyCode),
+                        color = LifeOsTheme.OrangeStreak,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
                     )
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        categorySlicesUi.forEach { slice ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(9.dp)
-                                            .clip(CircleShape)
-                                            .background(slice.color)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(slice.label, color = Color.White, fontSize = 13.sp)
-                                }
-                                Text(slice.amountFormatted, color = LifeOsTheme.TextSecondary, fontSize = 13.sp)
-                            }
-                        }
-                    }
+                    Text(
+                        text = String.format(Locale.US, "Mês ant.: %.0f %s", prevTotal, ov.currencyCode),
+                        color = LifeOsTheme.TextMuted,
+                        fontSize = 11.sp
+                    )
                 }
-            }
-        }
 
-        // 4. Matriz Step-Chart (Referência 03 & 10)
-        item {
-            BentoCard {
-                Text("Ritmo de Gastos: Este Mês vs Mês Anterior", color = Color.White, style = MaterialTheme.typography.titleMedium)
-                Text(
-                    text = "Linha degrau sólida = acumulado atual · Blocos de fundo = mês anterior",
-                    color = LifeOsTheme.TextSecondary,
-                    fontSize = 12.sp
-                )
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(8.dp))
+
                 SpendingBurnMatrix(
                     currentMonthCumulative = ov.burnMatrixPoints
                         .takeWhile { it.currentMonthCumulative > 0.0 || it.dayOfMonth == 1 }
                         .map { it.currentMonthCumulative },
                     previousMonthCumulative = ov.burnMatrixPoints.map { it.previousMonthCumulative }
                 )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Text(
+                    text = if (spendingLess) "You're spending less than last month..." else "Ritmo acima do mês anterior — atenção ao teto.",
+                    color = LifeOsTheme.TextSecondary,
+                    fontSize = 12.sp,
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                )
             }
         }
 
-        // 5. Livro-Razão Recente
+        // 7. Legenda Detalhada de Categorias + Transações Recentes
         item {
             BentoCard {
-                Text("Transações Recentes", color = Color.White, style = MaterialTheme.typography.titleMedium)
+                Text("Transações & Categorias", color = Color.White, style = MaterialTheme.typography.titleMedium)
                 Spacer(modifier = Modifier.height(10.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    ov.recentTransactions.forEach { tx ->
+                    filteredTransactions.forEach { tx ->
                         val isIncome = tx.type == "INCOME"
                         Row(
                             modifier = Modifier

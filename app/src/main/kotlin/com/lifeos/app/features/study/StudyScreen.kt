@@ -51,6 +51,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lifeos.core.domain.algorithm.EbbinghausScheduler
 import com.lifeos.core.domain.model.BookDomainModel
 import com.lifeos.ui.components.BentoCard
+import com.lifeos.ui.components.SmoothMetricSplineChart
 import com.lifeos.ui.theme.LifeOsTheme
 import java.util.Locale
 
@@ -101,6 +102,41 @@ fun StudyScreen(viewModel: StudyViewModel) {
                     Spacer(modifier = Modifier.width(4.dp))
                     Text("Tópico")
                 }
+            }
+        }
+
+        // 0.5. Analytics · Curva Suave de Retenção & Qualidade Cognitiva (Referência 02)
+        item {
+            val avgRetention = if (state.allTopics.isNotEmpty()) {
+                state.allTopics.map { it.estimatedRetentionPercent }.average().toInt()
+            } else {
+                86
+            }
+            BentoCard {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text("Média de Retenção", color = LifeOsTheme.TextSecondary, fontSize = 11.sp)
+                        Row(verticalAlignment = Alignment.Bottom) {
+                            Text("$avgRetention%", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Black)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Anterior 78% ↑", color = LifeOsTheme.GreenHealth, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("—● Atual", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        Text("— Anterior", color = LifeOsTheme.TextMuted, fontSize = 11.sp)
+                    }
+                }
+                Spacer(modifier = Modifier.height(10.dp))
+                SmoothMetricSplineChart(
+                    currentPoints = listOf(62f, 88f, 74f, 48f, avgRetention.toFloat()),
+                    previousPoints = listOf(50f, 54f, 68f, 73f, 78f),
+                    lineColor = Color.White
+                )
             }
         }
 

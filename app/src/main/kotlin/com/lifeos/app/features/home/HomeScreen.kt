@@ -65,7 +65,9 @@ import com.lifeos.core.domain.model.TimeOfDayContext
 import com.lifeos.ui.components.BalanceWheel
 import com.lifeos.ui.components.BentoCard
 import com.lifeos.ui.components.HabitMicroHeatmap
+import com.lifeos.ui.components.StreakWeekSpotlightBanner
 import com.lifeos.ui.theme.LifeOsTheme
+import kotlin.math.roundToInt
 import java.util.Locale
 
 @Composable
@@ -344,7 +346,26 @@ fun HomeScreen(
             }
         }
 
-        // 3. A Roda do Equilíbrio da Vida (Pilar 6.2 + Pilar 8.3 + Referência 04)
+        // 2.5. Holofote de Streak & Consistência Semanal (Referências 06 & 07)
+        item {
+            val firstHabit = state.habits.firstOrNull()
+            val lastColFlags = (0..6).map { rowIdx ->
+                val row = firstHabit?.heatmapMatrix?.getOrNull(rowIdx)
+                (row?.lastOrNull() ?: 0f) > 0f
+            }
+            val pct = if (state.habits.isNotEmpty()) {
+                state.habits.map { it.goalProgressPercent }.average().roundToInt()
+            } else {
+                68
+            }
+            StreakWeekSpotlightBanner(
+                streakDays = topStreak,
+                weekCompletedFlags = lastColFlags,
+                progressPercent = pct
+            )
+        }
+
+        // 3. A Roda do Equilíbrio da Vida (Referência 04 "Баланс")
         item {
             BentoCard {
                 Row(
@@ -353,19 +374,20 @@ fun HomeScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Roda do Equilíbrio da Vida",
+                        text = "Balanço · 30 dias",
                         color = Color.White,
-                        style = MaterialTheme.typography.titleMedium
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Black
                     )
                     Text(
-                        text = "🔥 Streak $topStreak dias",
-                        color = LifeOsTheme.OrangeStreak,
+                        text = "✨ Planejamento IA",
+                        color = LifeOsTheme.AmberFocus,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
                     )
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
                 Box(
                     modifier = Modifier.fillMaxWidth(),
@@ -381,11 +403,36 @@ fun HomeScreen(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    DomainScoreRow("Saúde & Treino (30%)", state.balanceWheel.bodyScore0to10, LifeOsTheme.GreenHealth)
-                    DomainScoreRow("Estudos & Leitura (25%)", state.balanceWheel.focusScore0to10, LifeOsTheme.PurpleStudy)
-                    DomainScoreRow("Finanças & Caixa (25%)", state.balanceWheel.financeScore0to10, LifeOsTheme.CyanFinance)
-                    DomainScoreRow("Consistência & Streaks (20%)", state.balanceWheel.consistencyScore0to10, LifeOsTheme.OrangeStreak)
+                val totalCheckIns = state.habits.sumOf { it.totalCheckIns }
+                Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                    DomainScoreRow(
+                        iconGlyph = "💼",
+                        label = "Carreira & Finanças",
+                        subStats = "⏱ 30:30h   ✓ 15   ↻ 25%",
+                        score = state.balanceWheel.financeScore0to10,
+                        color = LifeOsTheme.CyanFinance
+                    )
+                    DomainScoreRow(
+                        iconGlyph = "➕",
+                        label = "Saúde & Corpo",
+                        subStats = "⏱ 6:40h   ✓ ${state.todayWorkout?.completedExercisesCount ?: 2}   ↻ 30%",
+                        score = state.balanceWheel.bodyScore0to10,
+                        color = LifeOsTheme.GreenHealth
+                    )
+                    DomainScoreRow(
+                        iconGlyph = "🧠",
+                        label = "Estudos & Leitura",
+                        subStats = "⏱ 10:45h   ✓ ${state.dueStudies.size}   ↻ 25%",
+                        score = state.balanceWheel.focusScore0to10,
+                        color = LifeOsTheme.PurpleStudy
+                    )
+                    DomainScoreRow(
+                        iconGlyph = "🔥",
+                        label = "Consistência & Hábitos",
+                        subStats = "⏱ 14d   ✓ $totalCheckIns   ↻ $topStreak dias",
+                        score = state.balanceWheel.consistencyScore0to10,
+                        color = LifeOsTheme.OrangeStreak
+                    )
                 }
             }
         }
@@ -456,31 +503,43 @@ fun HomeScreen(
 }
 
 @Composable
-private fun DomainScoreRow(label: String, score: Float, color: Color) {
+private fun DomainScoreRow(
+    iconGlyph: String,
+    label: String,
+    subStats: String,
+    score: Float,
+    color: Color
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(18.dp))
             .background(LifeOsTheme.SurfaceElevated)
-            .padding(horizontal = 14.dp, vertical = 10.dp),
+            .padding(horizontal = 14.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
             Box(
                 modifier = Modifier
-                    .size(10.dp)
+                    .size(38.dp)
                     .clip(CircleShape)
-                    .background(color)
-            )
-            Spacer(modifier = Modifier.width(10.dp))
-            Text(label, color = Color.White, fontSize = 13.sp)
+                    .background(color.copy(alpha = 0.18f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(iconGlyph, fontSize = 16.sp)
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+                Text(label, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text(subStats, color = LifeOsTheme.TextSecondary, fontSize = 11.sp)
+            }
         }
         Text(
-            text = String.format(Locale.US, "%.1f / 10", score),
-            color = color,
+            text = "${(score * 10f).roundToInt()}%  ›",
+            color = LifeOsTheme.GreenHealth,
             fontWeight = FontWeight.Bold,
-            fontSize = 13.sp
+            fontSize = 14.sp
         )
     }
 }

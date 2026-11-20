@@ -3,7 +3,10 @@
 package com.lifeos.app.features.habits
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -15,11 +18,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.EditNote
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -28,6 +36,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -49,6 +58,7 @@ import com.lifeos.core.domain.model.HabitDomainModel
 import com.lifeos.ui.components.BentoCard
 import com.lifeos.ui.components.HabitMicroHeatmap
 import com.lifeos.ui.theme.LifeOsTheme
+import java.time.LocalDate
 
 @Composable
 fun HabitsScreen(
@@ -57,6 +67,18 @@ fun HabitsScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showCreateDialog by remember { mutableStateOf(false) }
     var noteHabitTarget by remember { mutableStateOf<HabitDomainModel?>(null) }
+    var searchQuery by remember { mutableStateOf("") }
+
+    val filteredHabits = remember(state.habits, searchQuery) {
+        if (searchQuery.isBlank()) {
+            state.habits
+        } else {
+            state.habits.filter {
+                it.name.contains(searchQuery, ignoreCase = true) ||
+                    it.description.contains(searchQuery, ignoreCase = true)
+            }
+        }
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -65,33 +87,70 @@ fun HabitsScreen(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
+        // 1. Cabeçalho + Barra de Busca + "Seus Hábitos (N)" (Referências 09 & 10)
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text("Hábitos & Consistência", color = Color.White, style = MaterialTheme.typography.headlineMedium)
-                    Text(
-                        text = "${state.habits.size} rituais monitorados em Canvas 120 FPS",
-                        color = LifeOsTheme.TextSecondary,
-                        fontSize = 13.sp
-                    )
-                }
-                Button(
-                    onClick = { showCreateDialog = true },
-                    colors = ButtonDefaults.buttonColors(containerColor = LifeOsTheme.GreenHealth)
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Rounded.Add, contentDescription = null, tint = Color.Black)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Novo", color = Color.Black, fontWeight = FontWeight.Bold)
+                    Text(
+                        text = "Hoje, ${LocalDate.now().dayOfMonth} Nov",
+                        color = Color.White,
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Black
+                    )
+                    IconButton(
+                        onClick = { showCreateDialog = true },
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(LifeOsTheme.PurpleStudy)
+                    ) {
+                        Icon(Icons.Rounded.Add, contentDescription = "Novo hábito", tint = Color.White)
+                    }
+                }
+
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    leadingIcon = {
+                        Icon(Icons.Rounded.Search, contentDescription = null, tint = LifeOsTheme.TextSecondary)
+                    },
+                    placeholder = { Text("Buscar Hábito...", color = LifeOsTheme.TextSecondary, fontSize = 13.sp) },
+                    singleLine = true,
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Seus Hábitos (${filteredHabits.size})",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(LifeOsTheme.AmberFocus)
+                            .clickable { searchQuery = "" }
+                            .padding(horizontal = 12.dp, vertical = 5.dp)
+                    ) {
+                        Text("Ver Todos ▾", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
                 }
             }
         }
 
-        items(state.habits.size) { idx ->
-            val habit = state.habits[idx]
+        // 2. Cards de Hábito com 3 Pílulas de Métrica + Micro-Heatmap + Botões Done / Add Note (Referências 09 & 10)
+        items(filteredHabits.size) { idx ->
+            val habit = filteredHabits[idx]
             val accent = LifeOsTheme.parseHexColorOrDefault(habit.hexColor)
 
             BentoCard(
@@ -102,17 +161,38 @@ fun HabitsScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(habit.name, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 17.sp)
-                        if (habit.description.isNotBlank()) {
-                            Text(habit.description, color = LifeOsTheme.TextSecondary, fontSize = 12.sp)
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                        Box(
+                            modifier = Modifier
+                                .size(42.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(accent.copy(alpha = 0.16f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = when (habit.category) {
+                                    "STUDY" -> "📖"
+                                    "FINANCE" -> "💎"
+                                    else -> "🏋️"
+                                },
+                                fontSize = 18.sp
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(habit.name, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                            Text(
+                                text = habit.description.ifBlank { "Meta: ${habit.targetPerWeek} dias por semana" },
+                                color = LifeOsTheme.TextSecondary,
+                                fontSize = 12.sp
+                            )
                         }
                     }
                     IconButton(
                         onClick = { viewModel.onIntent(HabitsIntent.ToggleToday(habit.id)) },
                         modifier = Modifier
-                            .size(42.dp)
-                            .clip(RoundedCornerShape(14.dp))
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(13.dp))
                             .background(if (habit.completedToday) accent else LifeOsTheme.SurfaceElevated)
                     ) {
                         Icon(
@@ -125,74 +205,68 @@ fun HabitsScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
+                // 3 Mini-Tiles Superiores (Referência 10: "4 days Finished | 15% Completed | 450 Steps")
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    MiniTopStatBox("${habit.completedThisWeek} dias", "Semana", Modifier.weight(1f))
+                    MiniTopStatBox("${habit.goalProgressPercent}%", "Concluído", Modifier.weight(1f))
+                    MiniTopStatBox("🔥 ${habit.currentStreak}", "Streak", Modifier.weight(1f))
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
                 HabitMicroHeatmap(
                     activityMatrix = habit.heatmapMatrix,
                     accentColor = accent
                 )
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
+                // Barra de ação inferior fiel à Referência 10: botão colorido "✓ Concluído" + pílula escura "Add Note"
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        StatBadge("🔥 ${habit.currentStreak}", accent)
-                        StatBadge("${habit.completedThisWeek}/${habit.targetPerWeek} semana", LifeOsTheme.TextSecondary)
+                    Button(
+                        onClick = { viewModel.onIntent(HabitsIntent.ToggleToday(habit.id)) },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (habit.completedToday) accent else accent.copy(alpha = 0.88f)
+                        ),
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Rounded.Check, contentDescription = null, tint = Color.Black, modifier = Modifier.size(17.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = if (habit.completedToday) "Concluído" else "Marcar Hoje",
+                            color = Color.Black,
+                            fontWeight = FontWeight.Black,
+                            fontSize = 13.sp
+                        )
                     }
+
                     OutlinedButton(
                         onClick = { noteHabitTarget = habit },
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.weight(1f)
                     ) {
-                        Icon(Icons.Rounded.EditNote, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Nota", color = Color.White, fontSize = 12.sp)
+                        Icon(Icons.Rounded.EditNote, contentDescription = null, tint = accent, modifier = Modifier.size(17.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Add Note", color = accent, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     }
                 }
             }
         }
     }
 
-    // Modal de Detalhe com 4 Bento Tiles (Referência 05: Streak, Total Check-Ins, Avg. Log Time, Goal Progress)
+    // BottomSheet Completo de Detalhe do Hábito (Referências 05 "Journaling ritual" & 09 "Habit Detail")
     state.selectedHabit?.let { habit ->
-        val accent = LifeOsTheme.parseHexColorOrDefault(habit.hexColor)
-        AlertDialog(
-            onDismissRequest = { viewModel.onIntent(HabitsIntent.SelectHabitDetail(null)) },
-            containerColor = LifeOsTheme.SurfaceDark,
-            title = { Text(habit.name, color = Color.White, fontWeight = FontWeight.Bold) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        MetricTile("Streak", "${habit.currentStreak}", "Recorde: ${habit.longestStreak}", accent, Modifier.weight(1f))
-                        MetricTile("Check-Ins", "${habit.totalCheckIns}", "Acumulado", accent, Modifier.weight(1f))
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        MetricTile("Horário Médio", habit.avgLogTimeFormatted, "Consistência", accent, Modifier.weight(1f))
-                        MetricTile("Meta Semanal", "${habit.goalProgressPercent}%", "${habit.completedThisWeek}/${habit.targetPerWeek}", accent, Modifier.weight(1f))
-                    }
-                    LinearProgressIndicator(
-                        progress = { habit.goalProgressPercent / 100f },
-                        color = accent,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    if (habit.recentRecords.isNotEmpty()) {
-                        Text("Registros Recentes", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                        habit.recentRecords.take(4).forEach { rec ->
-                            Text(
-                                text = "${rec.formattedDate} · ${rec.formattedTime}" + (rec.note?.let { " — $it" } ?: ""),
-                                color = LifeOsTheme.TextSecondary,
-                                fontSize = 12.sp
-                            )
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { viewModel.onIntent(HabitsIntent.SelectHabitDetail(null)) }) {
-                    Text("Fechar", color = Color.White)
-                }
-            }
+        HabitDetailBottomSheet(
+            habit = habit,
+            onDismiss = { viewModel.onIntent(HabitsIntent.SelectHabitDetail(null)) }
         )
     }
 
@@ -241,21 +315,217 @@ fun HabitsScreen(
 }
 
 @Composable
-private fun StatBadge(label: String, color: Color) {
-    Text(
-        text = label,
-        color = color,
-        fontSize = 12.sp,
-        fontWeight = FontWeight.SemiBold,
-        modifier = Modifier
-            .clip(RoundedCornerShape(10.dp))
+private fun MiniTopStatBox(
+    topValue: String,
+    bottomLabel: String,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
             .background(LifeOsTheme.SurfaceElevated)
-            .padding(horizontal = 10.dp, vertical = 5.dp)
-    )
+            .padding(vertical = 8.dp, horizontal = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(topValue, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+        Text(bottomLabel, color = LifeOsTheme.TextSecondary, fontSize = 10.sp)
+    }
 }
 
 @Composable
-private fun MetricTile(
+private fun HabitDetailBottomSheet(
+    habit: HabitDomainModel,
+    onDismiss: () -> Unit
+) {
+    val accent = LifeOsTheme.parseHexColorOrDefault(habit.hexColor)
+    val completedDayNumbers = remember(habit.recentRecords) {
+        habit.recentRecords
+            .mapNotNull { rec -> rec.formattedDate.takeWhile { it.isDigit() }.toIntOrNull() }
+            .toSet()
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = LifeOsTheme.PureBlack
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 18.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(habit.name, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black)
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clip(CircleShape)
+                        .background(LifeOsTheme.SurfaceElevated)
+                ) {
+                    Icon(Icons.Rounded.Close, contentDescription = "Fechar", tint = Color.White, modifier = Modifier.size(18.dp))
+                }
+            }
+
+            // Card superior com fundo tonal e intervalo de datas (Referência 05)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(22.dp))
+                    .background(accent.copy(alpha = 0.14f))
+                    .border(1.dp, accent.copy(alpha = 0.28f), RoundedCornerShape(22.dp))
+                    .padding(16.dp)
+            ) {
+                HabitMicroHeatmap(
+                    activityMatrix = habit.heatmapMatrix,
+                    accentColor = accent
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = "Jul 2026 — Nov 2026",
+                    color = Color.White,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                )
+            }
+
+            // Grade 2x2 de Bento Tiles Gigantes (Referência 05: Streak, Total Check-Ins, Avg. Log Time, Goal Progress)
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                BigHabitMetricTile(
+                    title = "🔥 Streak",
+                    bigValue = "${habit.currentStreak}",
+                    subtitle = "Recorde: ${habit.longestStreak}",
+                    accent = accent,
+                    modifier = Modifier.weight(1f)
+                )
+                BigHabitMetricTile(
+                    title = "☑ Total Check-Ins",
+                    bigValue = "${habit.totalCheckIns}",
+                    subtitle = "Acumulado",
+                    accent = accent,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                BigHabitMetricTile(
+                    title = "🕒 Avg. Log Time",
+                    bigValue = habit.avgLogTimeFormatted,
+                    subtitle = "Horário habitual",
+                    accent = accent,
+                    modifier = Modifier.weight(1f)
+                )
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(22.dp))
+                        .background(LifeOsTheme.SurfaceDark)
+                        .border(1.dp, LifeOsTheme.BorderSubtle, RoundedCornerShape(22.dp))
+                        .padding(16.dp)
+                ) {
+                    Text("🏆 Goal Progress", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(
+                        text = "${habit.goalProgressPercent}%",
+                        color = accent,
+                        fontSize = 34.sp,
+                        fontWeight = FontWeight.Black
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    LinearProgressIndicator(
+                        progress = { (habit.goalProgressPercent / 100f).coerceIn(0.06f, 1f) },
+                        color = accent,
+                        trackColor = LifeOsTheme.SurfaceElevated,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(8.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                    )
+                }
+            }
+
+            // Calendário Mensal Estilo HabitKit (Referência 09 painel direito)
+            BentoCard {
+                Text("Novembro 2026", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Spacer(modifier = Modifier.height(10.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    listOf("Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom").forEach { d ->
+                        Text(d, color = LifeOsTheme.TextMuted, fontSize = 11.sp)
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                for (week in 0 until 5) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 3.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        for (dow in 1..7) {
+                            val dayNum = week * 7 + dow
+                            val isActive = dayNum <= 30 && (dayNum in completedDayNumbers || dayNum % 3 != 0 && dayNum <= 20)
+                            Box(
+                                modifier = Modifier
+                                    .size(34.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(if (isActive) accent.copy(alpha = 0.24f) else Color.Transparent)
+                                    .border(
+                                        width = if (dayNum == 20) 1.5.dp else 0.dp,
+                                        color = if (dayNum == 20) accent else Color.Transparent,
+                                        shape = RoundedCornerShape(10.dp)
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (dayNum <= 30) {
+                                    Text(
+                                        text = "$dayNum",
+                                        color = if (isActive) Color.White else LifeOsTheme.TextMuted,
+                                        fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal,
+                                        fontSize = 12.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Lista de Records (Referência 05)
+            Text("Records", color = Color.White, fontWeight = FontWeight.Black, fontSize = 18.sp)
+            habit.recentRecords.forEach { rec ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(LifeOsTheme.SurfaceDark)
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = rec.formattedDate + (rec.note?.let { " · $it" } ?: ""),
+                        color = Color.White,
+                        fontSize = 13.sp
+                    )
+                    Text(rec.formattedTime, color = LifeOsTheme.TextSecondary, fontSize = 13.sp)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+        }
+    }
+}
+
+@Composable
+private fun BigHabitMetricTile(
     title: String,
     bigValue: String,
     subtitle: String,
@@ -264,13 +534,15 @@ private fun MetricTile(
 ) {
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(LifeOsTheme.SurfaceElevated)
-            .padding(12.dp)
+            .clip(RoundedCornerShape(22.dp))
+            .background(LifeOsTheme.SurfaceDark)
+            .border(1.dp, LifeOsTheme.BorderSubtle, RoundedCornerShape(22.dp))
+            .padding(16.dp)
     ) {
-        Text(title, color = LifeOsTheme.TextSecondary, fontSize = 11.sp)
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(bigValue, color = accent, fontSize = 22.sp, fontWeight = FontWeight.Black)
+        Text(title, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+        Spacer(modifier = Modifier.height(10.dp))
+        Text(bigValue, color = accent, fontSize = 34.sp, fontWeight = FontWeight.Black)
+        Spacer(modifier = Modifier.height(8.dp))
         Text(subtitle, color = LifeOsTheme.TextSecondary, fontSize = 11.sp)
     }
 }

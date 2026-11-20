@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
@@ -27,11 +29,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lifeos.ui.theme.LifeOsTheme
 import java.util.Locale
+import kotlin.math.cos
+import kotlin.math.sin
 
 /**
- * Roda do Equilíbrio da Vida (Pilar 8.3 + Referência 04):
- * Desenha os 4 setores polares proporcionais em estilo Nightingale Rose + arcos luminosos
- * externos e núcleo escuro com o LifeScore ponderado (0.0 a 10.0).
+ * Roda do Equilíbrio da Vida (Pilar 8.3 + Referência 04 "Баланс"):
+ * - Setores polares proporcionais em estilo Nightingale Rose sobre trilhas radiais escuras;
+ * - Bordas luminosas chanfradas de precisão em cada setor;
+ * - Orbe central OLED puro com micro-partículas luminosas multicoloridas e score 0.0–10.0.
  */
 @Composable
 fun BalanceWheel(
@@ -39,7 +44,7 @@ fun BalanceWheel(
     studyScore: Float,        // 0.0 a 1.0
     financeScore: Float,      // 0.0 a 1.0
     consistencyScore: Float,  // 0.0 a 1.0
-    modifier: Modifier = Modifier.size(240.dp)
+    modifier: Modifier = Modifier.size(260.dp)
 ) {
     val spec = tween<Float>(durationMillis = 900, easing = FastOutSlowInEasing)
     val animHealth by animateFloatAsState(healthScore.coerceIn(0f, 1f), spec, label = "health")
@@ -54,76 +59,128 @@ fun BalanceWheel(
             (animConsistency * 0.20f)
         ) * 10f
 
+    // 8 setores visuais inspirados na Referência 04 (4 domínios principais + 4 sub-eixos harmônicos)
+    val sectors = listOf(
+        Triple(-90f, animHealth, LifeOsTheme.GreenHealth),
+        Triple(-38f, (animHealth * 0.72f).coerceIn(0.25f, 1f), LifeOsTheme.RedExpense),
+        Triple(14f, animFinance, Color(0xFF2979FF)),
+        Triple(66f, animStudy, LifeOsTheme.PurpleStudy),
+        Triple(118f, animConsistency, Color(0xFFD97724)),
+        Triple(170f, ((animHealth + animConsistency) * 0.5f).coerceIn(0.3f, 1f), LifeOsTheme.CyanFinance),
+        Triple(222f, ((animStudy + animFinance) * 0.48f).coerceIn(0.28f, 1f), Color(0xFF94A3B8))
+    )
+
+    val sparkleColors = listOf(
+        LifeOsTheme.GreenHealth,
+        LifeOsTheme.PurpleStudy,
+        LifeOsTheme.CyanFinance,
+        LifeOsTheme.OrangeStreak,
+        LifeOsTheme.AmberFocus
+    )
+
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
-        Canvas(modifier = Modifier.size(224.dp)) {
+        Canvas(modifier = Modifier.size(236.dp)) {
             val center = Offset(size.width / 2f, size.height / 2f)
-            val maxRadius = size.minDimension / 2f - 10.dp.toPx()
-            val innerOrbRadius = maxRadius * 0.38f
-            val strokeWidth = 10.dp.toPx()
-            val gapDegrees = 8f
-            val fullSectorSweep = 90f - gapDegrees
+            val maxRadius = size.minDimension / 2f - 8.dp.toPx()
+            val innerOrbRadius = maxRadius * 0.39f
+            val sectorSweep = (360f / sectors.size) - 5f
 
-            // Trilhas base de fundo dos 4 quadrantes
-            val quadrants = listOf(
-                Triple(180f, animHealth, LifeOsTheme.GreenHealth),
-                Triple(270f, animStudy, LifeOsTheme.PurpleStudy),
-                Triple(0f, animFinance, LifeOsTheme.CyanFinance),
-                Triple(90f, animConsistency, LifeOsTheme.OrangeStreak)
-            )
-
-            quadrants.forEach { (startAngle, fraction, domainColor) ->
-                // Fundo sutil do setor polar
+            sectors.forEach { (startAngle, fraction, sectorColor) ->
+                // Trilha escura completa da fatia (Referência 04)
                 drawArc(
-                    color = LifeOsTheme.SurfaceElevated,
-                    startAngle = startAngle + gapDegrees / 2f,
-                    sweepAngle = fullSectorSweep,
+                    color = Color(0xFF151619),
+                    startAngle = startAngle,
+                    sweepAngle = sectorSweep,
                     useCenter = true,
                     topLeft = Offset(center.x - maxRadius, center.y - maxRadius),
                     size = Size(maxRadius * 2f, maxRadius * 2f)
                 )
 
-                // Setor polar proporcional (Referência 04)
-                val activeRadius = innerOrbRadius + ((maxRadius - innerOrbRadius) * fraction.coerceAtLeast(0.08f))
+                // Fatia polar iluminada proporcional à nota do domínio
+                val activeRadius = innerOrbRadius + ((maxRadius - innerOrbRadius) * fraction.coerceIn(0.18f, 1f))
                 drawArc(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            domainColor.copy(alpha = 0.12f),
-                            domainColor.copy(alpha = 0.52f)
+                            sectorColor.copy(alpha = 0.18f),
+                            sectorColor.copy(alpha = 0.78f)
                         ),
                         center = center,
                         radius = activeRadius
                     ),
-                    startAngle = startAngle + gapDegrees / 2f,
-                    sweepAngle = fullSectorSweep,
+                    startAngle = startAngle,
+                    sweepAngle = sectorSweep,
                     useCenter = true,
                     topLeft = Offset(center.x - activeRadius, center.y - activeRadius),
                     size = Size(activeRadius * 2f, activeRadius * 2f)
                 )
 
-                // Arco externo luminoso de precisão (Pilar 8.3)
+                // Borda luminosa externa da fatia (efeito chanfro neon da Referência 04)
                 drawArc(
-                    color = domainColor,
-                    startAngle = startAngle + gapDegrees / 2f,
-                    sweepAngle = (fullSectorSweep * fraction).coerceAtLeast(4f),
+                    color = sectorColor,
+                    startAngle = startAngle + 1f,
+                    sweepAngle = (sectorSweep - 2f).coerceAtLeast(4f),
                     useCenter = false,
                     topLeft = Offset(center.x - activeRadius, center.y - activeRadius),
                     size = Size(activeRadius * 2f, activeRadius * 2f),
-                    style = Stroke(width = strokeWidth * 0.55f, cap = StrokeCap.Round)
+                    style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
                 )
             }
 
             // Orbe central OLED puro
             drawCircle(
-                color = LifeOsTheme.PureBlack,
+                color = Color(0xFF050507),
                 radius = innerOrbRadius,
                 center = center
             )
             drawCircle(
-                color = LifeOsTheme.BorderSubtle,
+                color = Color(0xFF22242A),
                 radius = innerOrbRadius,
                 center = center,
                 style = Stroke(width = 1.5.dp.toPx())
             )
+
+            // Micro-partículas estelares coloridas dentro do orbe central (fiel à Referência 04)
+            for (i in 0 until 28) {
+                val angleRad = Math.toRadians((i * 137.5))
+                val distRatio = 0.34f + ((i % 7) * 0.085f)
+                val px = center.x + (cos(angleRad) * innerOrbRadius * distRatio).toFloat()
+                val py = center.y + (sin(angleRad) * innerOrbRadius * distRatio).toFloat()
+                val dotRadius = if (i % 3 == 0) 2.1.dp.toPx() else 1.3.dp.toPx()
+                drawCircle(
+                    color = sparkleColors[i % sparkleColors.size].copy(alpha = 0.78f),
+                    radius = dotRadius,
+                    center = Offset(px, py)
+                )
+            }
+        }
+
+        // Rótulos orbitais discretos nos 4 pontos cardeais
+        Box(modifier = Modifier.size(260.dp)) {
+            Text(
+                text = "SAÚDE",
+                color = LifeOsTheme.TextMuted,
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 2.dp)
+            )
+            Text(
+                text = "ESTUDOS",
+                color = LifeOsTheme.TextMuted,
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 2.dp)
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth().align(Alignment.Center),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("STREAK", color = LifeOsTheme.TextMuted, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                Text("CAIXA", color = LifeOsTheme.TextMuted, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+            }
         }
 
         Column(
@@ -134,7 +191,7 @@ fun BalanceWheel(
                 Text(
                     text = String.format(Locale.US, "%.1f", overallScore),
                     color = Color.White,
-                    fontSize = 30.sp,
+                    fontSize = 28.sp,
                     fontWeight = FontWeight.Black
                 )
                 Spacer(modifier = Modifier.width(2.dp))
@@ -145,13 +202,6 @@ fun BalanceWheel(
                     fontWeight = FontWeight.Bold
                 )
             }
-            Text(
-                text = "LIFE SCORE",
-                color = LifeOsTheme.TextSecondary,
-                fontSize = 9.sp,
-                fontWeight = FontWeight.SemiBold,
-                letterSpacing = 1.1.sp
-            )
         }
     }
 }
