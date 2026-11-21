@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -36,7 +37,8 @@ import androidx.compose.ui.unit.sp
 import com.lifeos.ui.theme.LifeOsTheme
 
 /**
- * Componentes fisiológicos auxiliares 100% refatorados para Zero-GC (Modifier.drawWithCache).
+ * Componentes fisiológicos auxiliares 100% refatorados para Zero-GC (Modifier.drawWithCache)
+ * e ícones vetoriais luminosos.
  */
 @Composable
 fun WeeklyGradientBarsChart(
@@ -58,7 +60,7 @@ fun WeeklyGradientBarsChart(
                     val targetY = size.height * (1f - targetLineRatio.coerceIn(0.15f, 0.9f))
                     val dashEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f), 0f)
                     val slotWidth = size.width / 7f
-                    val barWidth = (slotWidth * 0.28f).coerceAtLeast(8.dp.toPx())
+                    val barWidth = (slotWidth * 0.30f).coerceAtLeast(8.dp.toPx())
                     val corner = CornerRadius(barWidth / 2f, barWidth / 2f)
                     val strokePx = 1.dp.toPx()
 
@@ -69,13 +71,13 @@ fun WeeklyGradientBarsChart(
                         val top = size.height - barHeight
                         val brush = if (idx == peakIdx) {
                             Brush.verticalGradient(
-                                colors = listOf(Color(0xFFFFD166), Color(0xFFB68924)),
+                                colors = listOf(Color(0xFFFFD166), Color(0xFFD97706)),
                                 startY = top,
                                 endY = size.height
                             )
                         } else {
                             Brush.verticalGradient(
-                                colors = listOf(Color(0xFFB7E856), Color(0xFF4F6F1E)),
+                                colors = listOf(Color(0xFFB7F34D), Color(0xFF3E6B1C)),
                                 startY = top,
                                 endY = size.height
                             )
@@ -118,7 +120,7 @@ fun WeeklyGradientBarsChart(
 @Composable
 fun WeeklyTrendDotsChart(
     points: List<Float>,
-    lineColor: Color = Color(0xFFB7E856),
+    lineColor: Color = Color(0xFFB7F34D),
     modifier: Modifier = Modifier.fillMaxWidth()
 ) {
     val labels = listOf("S", "T", "Q", "Q", "S", "S", "D")
@@ -135,8 +137,8 @@ fun WeeklyTrendDotsChart(
                     val span = (maxV - minV).coerceAtLeast(1f)
                     val slotWidth = size.width / 7f
                     val gridStroke = 1.dp.toPx()
-                    val lineStroke = 2.2.dp.toPx()
-                    val dotRadius = 4.dp.toPx()
+                    val lineStroke = 2.4.dp.toPx()
+                    val dotRadius = 4.2.dp.toPx()
 
                     val offsets = Array(safePoints.size) { idx ->
                         val norm = ((safePoints[idx] - minV) / span).coerceIn(0f, 1f)
@@ -209,14 +211,19 @@ fun CircularStreakRing(
                     }
                 }
         )
-        Text("🔥", fontSize = 20.sp)
+        Icon(
+            imageVector = Icons.Rounded.LocalFireDepartment,
+            contentDescription = null,
+            tint = LifeOsTheme.OrangeStreak,
+            modifier = Modifier.size(22.dp)
+        )
     }
 }
 
 @Composable
 fun MacroDomainDonutRing(
     fractions: List<Float> = listOf(0.42f, 0.33f, 0.25f),
-    colors: List<Color> = listOf(Color(0xFFB7E856), LifeOsTheme.GreenHealth, LifeOsTheme.AmberFocus),
+    colors: List<Color> = listOf(Color(0xFFB7F34D), LifeOsTheme.GreenHealth, LifeOsTheme.AmberFocus),
     modifier: Modifier = Modifier.size(48.dp)
 ) {
     Spacer(
@@ -250,20 +257,31 @@ fun StreakWeekSpotlightBanner(
     modifier: Modifier = Modifier.fillMaxWidth()
 ) {
     val dayNames = listOf("Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom")
+    val cardShape = RoundedCornerShape(26.dp)
 
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(24.dp))
+            .clip(cardShape)
             .background(
                 Brush.radialGradient(
                     colors = listOf(
-                        LifeOsTheme.OrangeStreak.copy(alpha = 0.24f),
+                        LifeOsTheme.OrangeStreak.copy(alpha = 0.22f),
+                        LifeOsTheme.SurfaceGlassTop,
                         LifeOsTheme.SurfaceDark
                     ),
-                    radius = 520f
+                    radius = 560f
                 )
             )
-            .border(1.dp, LifeOsTheme.BorderSubtle, RoundedCornerShape(24.dp))
+            .border(
+                width = 1.dp,
+                brush = Brush.linearGradient(
+                    colors = listOf(
+                        LifeOsTheme.OrangeStreak.copy(alpha = 0.55f),
+                        LifeOsTheme.BorderSubtle
+                    )
+                ),
+                shape = cardShape
+            )
             .padding(18.dp)
     ) {
         Row(
@@ -272,22 +290,31 @@ fun StreakWeekSpotlightBanner(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .background(LifeOsTheme.OrangeStreak.copy(alpha = 0.18f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("🔥", fontSize = 24.sp)
-                }
+                GlowingIconOrb(
+                    icon = Icons.Rounded.LocalFireDepartment,
+                    tint = LifeOsTheme.OrangeStreak,
+                    size = 46.dp,
+                    iconSize = 24.dp
+                )
                 Spacer(modifier = Modifier.size(12.dp))
                 Column {
-                    Text("STREAK ATIVO", color = LifeOsTheme.TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Text(
+                        text = "STREAK ATIVO · RITMO DOPAMINÉRGICO",
+                        color = LifeOsTheme.OrangeStreak,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        letterSpacing = 0.8.sp
+                    )
                     Row(verticalAlignment = Alignment.Bottom) {
                         Text("$streakDays", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Black)
                         Spacer(modifier = Modifier.size(6.dp))
-                        Text("DIAS SEGUIDOS", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            text = "DIAS SEGUIDOS",
+                            color = LifeOsTheme.TextPrimary,
+                            fontSize = 11.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
                     }
                 }
             }
@@ -296,20 +323,18 @@ fun StreakWeekSpotlightBanner(
                     text = "$progressPercent%",
                     color = LifeOsTheme.GreenHealth,
                     fontWeight = FontWeight.Black,
-                    fontSize = 18.sp
+                    fontSize = 19.sp
                 )
                 if (!shieldBadgeText.isNullOrBlank()) {
-                    Text(
-                        text = shieldBadgeText,
-                        color = LifeOsTheme.CyanFinance,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold
+                    LuxuryStatBadge(
+                        label = shieldBadgeText,
+                        accent = LifeOsTheme.CyanFinance
                     )
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(14.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -320,12 +345,12 @@ fun StreakWeekSpotlightBanner(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Box(
                         modifier = Modifier
-                            .size(32.dp)
+                            .size(34.dp)
                             .clip(CircleShape)
-                            .background(if (done) LifeOsTheme.GreenHealth else Color(0xFF1A1B1E))
+                            .background(if (done) LifeOsTheme.GreenHealth else Color(0xFF161821))
                             .border(
                                 width = 1.5.dp,
-                                color = if (done) LifeOsTheme.GreenHealth else Color(0xFF2B2D33),
+                                color = if (done) LifeOsTheme.GreenHealth else LifeOsTheme.BorderSubtle,
                                 shape = CircleShape
                             ),
                         contentAlignment = Alignment.Center
@@ -339,27 +364,31 @@ fun StreakWeekSpotlightBanner(
                             )
                         }
                     }
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(name, color = LifeOsTheme.TextSecondary, fontSize = 10.sp)
+                    Spacer(modifier = Modifier.height(5.dp))
+                    Text(name, color = if (done) Color.White else LifeOsTheme.TextMuted, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(8.dp)
                 .clip(RoundedCornerShape(4.dp))
-                .background(Color(0xFF1A281E))
+                .background(Color(0xFF151F19))
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth(fraction = (progressPercent / 100f).coerceIn(0.06f, 1f))
                     .height(8.dp)
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(LifeOsTheme.GreenHealth)
+                .clip(RoundedCornerShape(4.dp))
+                    .background(
+                        Brush.horizontalGradient(
+                            colors = listOf(LifeOsTheme.GreenHealth, Color(0xFFA8FF00))
+                        )
+                    )
             )
         }
     }

@@ -1,19 +1,25 @@
 package com.lifeos.ui.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -55,8 +61,8 @@ fun HabitMicroHeatmap(
                     Text(
                         text = ch,
                         color = LifeOsTheme.TextMuted,
-                        fontSize = 8.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 8.5.sp,
+                        fontWeight = FontWeight.Bold,
                         lineHeight = 9.sp
                     )
                 }
@@ -76,8 +82,8 @@ fun HabitMicroHeatmap(
                     val availableWidth = (size.width - (cellSpacing * (cols - 1))).coerceAtLeast(1f)
                     val availableHeight = (size.height - (cellSpacing * (rows - 1))).coerceAtLeast(1f)
                     val cellSize = Size(availableWidth / cols, availableHeight / rows)
-                    val corner = CornerRadius(3.dp.toPx(), 3.dp.toPx())
-                    val emptyColor = accentColor.copy(alpha = 0.09f)
+                    val corner = CornerRadius(3.2.dp.toPx(), 3.2.dp.toPx())
+                    val emptyColor = Color(0xFF161922)
 
                     onDrawBehind {
                         for (col in 0 until cols) {
@@ -85,7 +91,7 @@ fun HabitMicroHeatmap(
                             for (row in 0 until rows) {
                                 val intensity = activityMatrix.getOrNull(row)?.getOrNull(col) ?: 0f
                                 val color = if (intensity > 0f) {
-                                    accentColor.copy(alpha = (0.32f + (intensity * 0.68f)).coerceIn(0f, 1f))
+                                    accentColor.copy(alpha = (0.28f + (intensity * 0.72f)).coerceIn(0f, 1f))
                                 } else {
                                     emptyColor
                                 }
@@ -104,7 +110,8 @@ fun HabitMicroHeatmap(
 }
 
 /**
- * Matriz Anual Completa 7x52 estilo GitHub (364 dias — Pilar 6.1) com rolagem horizontal fluida a 120 FPS.
+ * Matriz Anual Completa 7x52 estilo GitHub (364 dias — Pilar 6.1) com régua de meses,
+ * legenda de densidade e rolagem horizontal fluida a 120 FPS.
  */
 @Composable
 fun AnnualGitHubHeatmap7x52(
@@ -113,20 +120,62 @@ fun AnnualGitHubHeatmap7x52(
     modifier: Modifier = Modifier.fillMaxWidth()
 ) {
     val scrollState = rememberScrollState(initial = Int.MAX_VALUE)
+    val months = listOf("Dez", "Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov")
+
     Column(modifier = modifier) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .horizontalScroll(scrollState)
         ) {
-            HabitMicroHeatmap(
-                activityMatrix = annualMatrix7x52,
-                accentColor = accentColor,
-                showWeekdayLabels = true,
-                modifier = Modifier
-                    .width(640.dp)
-                    .height(96.dp)
-            )
+            Column(modifier = Modifier.width(652.dp)) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, bottom = 5.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    months.forEach { m ->
+                        Text(
+                            text = m,
+                            color = LifeOsTheme.TextMuted,
+                            fontSize = 9.5.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+                HabitMicroHeatmap(
+                    activityMatrix = annualMatrix7x52,
+                    accentColor = accentColor,
+                    showWeekdayLabels = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(96.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Menos", color = LifeOsTheme.TextMuted, fontSize = 9.5.sp)
+            Spacer(modifier = Modifier.width(6.dp))
+            listOf(0f, 0.28f, 0.55f, 0.80f, 1.0f).forEach { lvl ->
+                Box(
+                    modifier = Modifier
+                        .padding(horizontal = 1.5.dp)
+                        .size(9.dp)
+                        .clip(RoundedCornerShape(2.5.dp))
+                        .background(
+                            if (lvl == 0f) Color(0xFF161922) else accentColor.copy(alpha = lvl)
+                        )
+                )
+            }
+            Spacer(modifier = Modifier.width(6.dp))
+            Text("Mais", color = LifeOsTheme.TextSecondary, fontSize = 9.5.sp, fontWeight = FontWeight.SemiBold)
         }
     }
 }

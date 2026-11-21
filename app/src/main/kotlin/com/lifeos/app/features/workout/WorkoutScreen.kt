@@ -6,8 +6,10 @@ import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -19,14 +21,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.FitnessCenter
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -49,6 +52,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lifeos.ui.components.AnatomicalMuscleFatigueMap
 import com.lifeos.ui.components.BentoCard
 import com.lifeos.ui.components.CircularStreakRing
+import com.lifeos.ui.components.EyebrowCapsule
+import com.lifeos.ui.components.GlowingIconOrb
+import com.lifeos.ui.components.LuxuryStatBadge
 import com.lifeos.ui.components.MacroDomainDonutRing
 import com.lifeos.ui.components.ProgressiveOverloadRegressionChart
 import com.lifeos.ui.components.WeeklyGradientBarsChart
@@ -60,6 +66,7 @@ fun WorkoutScreen(
     viewModel: WorkoutViewModel
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val limeAccent = Color(0xFFB7F34D)
 
     val calendarPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
@@ -82,42 +89,72 @@ fun WorkoutScreen(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(LifeOsTheme.PureBlack),
+            .background(Color.Transparent),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         item {
-            Text("Calistenia & Fisiologia", color = Color.White, style = MaterialTheme.typography.headlineMedium)
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                days.forEach { (dayNum, label) ->
-                    FilterChip(
-                        selected = state.selectedDayOfWeek == dayNum,
-                        onClick = { viewModel.onIntent(WorkoutIntent.SelectDay(dayNum)) },
-                        label = { Text(label) }
-                    )
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                EyebrowCapsule(
+                    text = "18:00 · ENGENHARIA NEUROMUSCULAR",
+                    accent = limeAccent
+                )
+                Text(
+                    text = "Calistenia & Fisiologia",
+                    color = Color.White,
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Black
+                )
+
+                // Seletor Semanal de 7 Cápsulas em Vidro Fumê
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(CircleShape)
+                        .background(LifeOsTheme.SurfaceDark)
+                        .border(1.dp, LifeOsTheme.BorderSubtle, CircleShape)
+                        .padding(4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    days.forEach { (dayNum, label) ->
+                        val active = state.selectedDayOfWeek == dayNum
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(CircleShape)
+                                .background(if (active) limeAccent else Color.Transparent)
+                                .clickable { viewModel.onIntent(WorkoutIntent.SelectDay(dayNum)) }
+                                .padding(vertical = 8.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = label,
+                                color = if (active) Color.Black else LifeOsTheme.TextSecondary,
+                                fontSize = 11.5.sp,
+                                fontWeight = if (active) FontWeight.Black else FontWeight.SemiBold,
+                                maxLines = 1,
+                                softWrap = false
+                            )
+                        }
+                    }
                 }
             }
         }
 
         if (state.activeTimer.isRunning) {
             item {
-                BentoCard(borderColor = LifeOsTheme.OrangeStreak) {
+                BentoCard(borderColor = LifeOsTheme.OrangeStreak, glowAccent = LifeOsTheme.OrangeStreak) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column {
-                            Text(state.activeTimer.label, color = LifeOsTheme.OrangeStreak, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            EyebrowCapsule(text = state.activeTimer.label, accent = LifeOsTheme.OrangeStreak)
+                            Spacer(modifier = Modifier.height(4.dp))
                             Text(state.activeTimer.formattedRemaining, color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Black)
                         }
-                        OutlinedButton(onClick = { viewModel.onIntent(WorkoutIntent.StopRestTimer) }) {
+                        OutlinedButton(onClick = { viewModel.onIntent(WorkoutIntent.StopRestTimer) }, shape = CircleShape) {
                             Text("Pular Descanso", color = Color.White)
                         }
                     }
@@ -125,7 +162,10 @@ fun WorkoutScreen(
                     LinearProgressIndicator(
                         progress = { state.activeTimer.progressFraction },
                         color = LifeOsTheme.OrangeStreak,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(3.dp))
                     )
                 }
             }
@@ -133,7 +173,7 @@ fun WorkoutScreen(
 
         state.calendarSyncMessage?.let { msg ->
             item {
-                BentoCard(borderColor = LifeOsTheme.GreenHealth) {
+                BentoCard(borderColor = LifeOsTheme.GreenHealth, glowAccent = LifeOsTheme.GreenHealth) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -152,10 +192,10 @@ fun WorkoutScreen(
         if (routine == null) {
             item {
                 BentoCard {
-                    Text("Descanso Regenerativo & Mobilidade", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    Text("Recuperação Miofascial & Mobilidade", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = "Nenhuma rotina pesada agendada para este dia. Importe um PDF/MD na Home para adicionar treinos.",
+                        text = "Janela dedicada à supercompensação tecidual. Importe um protocolo na aba Hoje para adicionar sessões.",
                         color = LifeOsTheme.TextSecondary,
                         fontSize = 13.sp
                     )
@@ -163,20 +203,21 @@ fun WorkoutScreen(
             }
         } else {
             item {
-                BentoCard {
+                BentoCard(glowAccent = LifeOsTheme.GreenHealth) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(routine.name, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                            Text(routine.name, color = Color.White, fontWeight = FontWeight.Black, fontSize = 19.sp)
                             Text(
                                 text = "${routine.completedExercisesCount}/${routine.exercises.size} exercícios concluídos · ~${routine.estimatedDurationMinutes} min",
                                 color = LifeOsTheme.TextSecondary,
                                 fontSize = 12.sp
                             )
                         }
+                        Spacer(modifier = Modifier.width(8.dp))
                         OutlinedButton(
                             onClick = {
                                 calendarPermissionLauncher.launch(
@@ -185,50 +226,90 @@ fun WorkoutScreen(
                                         Manifest.permission.WRITE_CALENDAR
                                     )
                                 )
-                            }
+                            },
+                            shape = CircleShape,
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                         ) {
-                            Icon(Icons.Rounded.CalendarMonth, contentDescription = null, tint = LifeOsTheme.GreenHealth, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Agenda", color = Color.White, fontSize = 12.sp)
+                            Icon(Icons.Rounded.CalendarMonth, contentDescription = null, tint = LifeOsTheme.GreenHealth, modifier = Modifier.size(15.dp))
+                            Spacer(modifier = Modifier.width(5.dp))
+                            Text("Agenda", color = Color.White, fontSize = 11.5.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                         }
                     }
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
                     LinearProgressIndicator(
-                        progress = { routine.completionFraction },
+                        progress = { routine.completionFraction.coerceAtLeast(0.06f) },
                         color = LifeOsTheme.GreenHealth,
-                        modifier = Modifier.fillMaxWidth()
+                        trackColor = LifeOsTheme.SurfaceElevated,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(7.dp)
+                            .clip(RoundedCornerShape(4.dp))
                     )
                 }
             }
 
             items(routine.exercises.size) { index ->
                 val ex = routine.exercises[index]
-                BentoCard {
+                val accent = if (ex.isCompletedToday) LifeOsTheme.GreenHealth else LifeOsTheme.AmberFocus
+
+                BentoCard(glowAccent = if (ex.isCompletedToday) LifeOsTheme.GreenHealth else null) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(ex.name, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
-                            val weightBadge = if (ex.lastWeightKg > 0f) {
-                                " · Carga anterior: +${ex.lastWeightKg.toInt()} kg"
-                            } else {
-                                " · Peso corporal"
+                        Row(
+                            modifier = Modifier.weight(1f),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            GlowingIconOrb(
+                                icon = if (ex.isCompletedToday) Icons.Rounded.Check else Icons.Rounded.FitnessCenter,
+                                tint = accent,
+                                size = 40.dp,
+                                iconSize = 18.dp
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(ex.name, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.5.sp)
+                                val weightBadge = if (ex.lastWeightKg > 0f) {
+                                    " · +${ex.lastWeightKg.toInt()} kg"
+                                } else {
+                                    " · Peso corporal"
+                                }
+                                Text(
+                                    text = "${ex.targetSets}×${ex.targetReps} reps · ${ex.restSeconds}s$weightBadge",
+                                    color = LifeOsTheme.TextSecondary,
+                                    fontSize = 11.5.sp
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    for (s in 0 until ex.targetSets.coerceAtMost(6)) {
+                                        val done = s < ex.completedSetsToday
+                                        Box(
+                                            modifier = Modifier
+                                                .size(width = 16.dp, height = 5.dp)
+                                                .clip(CircleShape)
+                                                .background(
+                                                    if (done) LifeOsTheme.GreenHealth else LifeOsTheme.SurfaceElevated
+                                                )
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "${ex.completedSetsToday}/${ex.targetSets}",
+                                        color = accent,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.ExtraBold
+                                    )
+                                }
                             }
-                            Text(
-                                text = "${ex.targetSets} séries × ${ex.targetReps} reps · Descanso ${ex.restSeconds}s$weightBadge",
-                                color = LifeOsTheme.TextSecondary,
-                                fontSize = 12.sp
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "Progresso hoje: ${ex.completedSetsToday}/${ex.targetSets} séries",
-                                color = if (ex.isCompletedToday) LifeOsTheme.GreenHealth else LifeOsTheme.OrangeStreak,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold
-                            )
                         }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
                         Button(
                             onClick = {
                                 val nextCount = if (ex.completedSetsToday >= ex.targetSets) 0 else ex.completedSetsToday + 1
@@ -241,21 +322,26 @@ fun WorkoutScreen(
                                     )
                                 )
                             },
+                            shape = CircleShape,
+                            contentPadding = PaddingValues(horizontal = 13.dp, vertical = 8.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = if (ex.isCompletedToday) LifeOsTheme.SurfaceElevated else LifeOsTheme.GreenHealth
                             )
                         ) {
                             Icon(
-                                imageVector = Icons.Rounded.PlayArrow,
+                                imageVector = if (ex.isCompletedToday) Icons.Rounded.Check else Icons.Rounded.PlayArrow,
                                 contentDescription = null,
-                                tint = if (ex.isCompletedToday) Color.White else Color.Black,
-                                modifier = Modifier.size(16.dp)
+                                tint = if (ex.isCompletedToday) LifeOsTheme.GreenHealth else Color.Black,
+                                modifier = Modifier.size(15.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = if (ex.isCompletedToday) "Reiniciar" else "+1 Série",
+                                text = if (ex.isCompletedToday) "Feito" else "+1 Série",
                                 color = if (ex.isCompletedToday) Color.White else Color.Black,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Black,
+                                fontSize = 12.sp,
+                                maxLines = 1,
+                                softWrap = false
                             )
                         }
                     }
@@ -267,75 +353,82 @@ fun WorkoutScreen(
         item {
             var selectedPeriod by remember { mutableStateOf("Semana") }
             val periods = listOf("Semana", "Mês", "3 Meses", "Ano")
-            val limeAccent = Color(0xFFB7E856)
 
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Spacer(modifier = Modifier.height(6.dp))
-                Text("Seu Progresso Fisiológico", color = Color.White, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
-                Text("Pequenos passos, grandes adaptações neuromusculares.", color = LifeOsTheme.TextSecondary, fontSize = 12.sp)
+                Text("Telemetria & Adaptação", color = Color.White, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Black)
+                Text("Biometria muscular, sobrecarga progressiva e gasto calórico ativo.", color = LifeOsTheme.TextSecondary, fontSize = 12.5.sp)
 
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(22.dp))
+                        .clip(CircleShape)
                         .background(LifeOsTheme.SurfaceDark)
+                        .border(1.dp, LifeOsTheme.BorderSubtle, CircleShape)
                         .padding(4.dp),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     periods.forEach { p ->
                         val active = selectedPeriod == p
-                        TextButton(
-                            onClick = { selectedPeriod = p },
+                        Box(
                             modifier = Modifier
                                 .weight(1f)
-                                .clip(RoundedCornerShape(18.dp))
+                                .clip(CircleShape)
                                 .background(if (active) limeAccent else Color.Transparent)
+                                .clickable { selectedPeriod = p }
+                                .padding(vertical = 8.dp),
+                            contentAlignment = Alignment.Center
                         ) {
                             Text(
                                 text = p,
                                 color = if (active) Color.Black else LifeOsTheme.TextSecondary,
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 12.sp
+                                fontSize = 12.sp,
+                                maxLines = 1,
+                                softWrap = false
                             )
                         }
                     }
                 }
 
-                BentoCard {
+                BentoCard(glowAccent = LifeOsTheme.GreenHealth) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column {
-                            Text("MAPA ANATÔMICO DE FADIGA MUSCULAR", color = LifeOsTheme.GreenHealth, style = MaterialTheme.typography.labelSmall)
-                            Text("Recuperação Fisiológica Termográfica", color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Black)
+                        Column(modifier = Modifier.weight(1f)) {
+                            EyebrowCapsule(text = "SCANNER MIOFASCIAL TERMOGRÁFICO", accent = LifeOsTheme.GreenHealth)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text("Mapa Anatômico de Fadiga", color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Black)
                         }
-                        Text("120 FPS", color = LifeOsTheme.AmberFocus, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        LuxuryStatBadge(label = "120 FPS", accent = LifeOsTheme.AmberFocus)
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
                     val fMap = state.muscleFatigueGroups.associate { it.groupKey to it.recoveryFraction }
                     AnatomicalMuscleFatigueMap(
                         chestRecovery = fMap["CHEST"] ?: 0.90f,
-                        backRecovery = fMap["BACK"] ?: 0.52f,
-                        shouldersRecovery = fMap["SHOULDERS"] ?: 0.78f,
-                        armsRecovery = fMap["ARMS"] ?: 0.60f,
-                        coreRecovery = fMap["CORE"] ?: 0.84f,
-                        legsRecovery = fMap["LEGS"] ?: 0.95f
+                        backRecovery = fMap["BACK"] ?: 0.42f,
+                        shouldersRecovery = fMap["SHOULDERS"] ?: 0.76f,
+                        armsRecovery = fMap["ARMS"] ?: 0.54f,
+                        coreRecovery = fMap["CORE"] ?: 0.86f,
+                        legsRecovery = fMap["LEGS"] ?: 0.96f
                     )
                 }
 
-                BentoCard {
+                BentoCard(glowAccent = LifeOsTheme.AmberFocus) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column {
-                            Text("SOBRECARGA PROGRESSIVA & REGRESSÃO", color = LifeOsTheme.AmberFocus, style = MaterialTheme.typography.labelSmall)
-                            Text("Repetições × Carga Extra (kg)", color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Black)
+                        Column(modifier = Modifier.weight(1f)) {
+                            EyebrowCapsule(text = "SOBRECARGA PROGRESSIVA", accent = LifeOsTheme.AmberFocus)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text("Repetições × Lastro Extra (kg)", color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Black)
                         }
-                        Text("— Regressão Linear", color = LifeOsTheme.AmberFocus, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        LuxuryStatBadge(label = "Regressão Linear", accent = LifeOsTheme.AmberFocus)
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     ProgressiveOverloadRegressionChart()
@@ -347,20 +440,11 @@ fun WorkoutScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column {
+                        Column(modifier = Modifier.weight(1f)) {
                             Text("Volume Semanal Ativo", color = LifeOsTheme.TextSecondary, fontSize = 12.sp)
                             Text("1.420 kcal média", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Black)
                         }
-                        Text(
-                            text = "↑ 8% vs sem. ant.",
-                            color = limeAccent,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(limeAccent.copy(alpha = 0.14f))
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
+                        LuxuryStatBadge(label = "↑ 8% vs ant.", accent = limeAccent)
                     }
                     Spacer(modifier = Modifier.height(12.dp))
                     WeeklyGradientBarsChart(
@@ -374,16 +458,11 @@ fun WorkoutScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column {
+                        Column(modifier = Modifier.weight(1f)) {
                             Text("Progressão de Carga Extra", color = LifeOsTheme.TextSecondary, fontSize = 12.sp)
-                            Text("+12.0 kg média", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Black)
+                            Text("+12,0 kg média", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Black)
                         }
-                        Text(
-                            text = "+2.0 kg evolução",
-                            color = limeAccent,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                        LuxuryStatBadge(label = "+2,0 kg", accent = limeAccent)
                     }
                     Spacer(modifier = Modifier.height(10.dp))
                     WeeklyTrendDotsChart(
@@ -402,7 +481,7 @@ fun WorkoutScreen(
                             Column {
                                 Text("Streak", color = LifeOsTheme.TextSecondary, fontSize = 12.sp)
                                 Text("12 dias", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black)
-                                Text("Mantenha!", color = LifeOsTheme.TextMuted, fontSize = 11.sp)
+                                Text("Consistente", color = LifeOsTheme.TextMuted, fontSize = 11.sp)
                             }
                             CircularStreakRing(progress = 0.78f)
                         }
@@ -411,10 +490,10 @@ fun WorkoutScreen(
                     BentoCard(modifier = Modifier.weight(1f)) {
                         Text("Meta Diária", color = LifeOsTheme.TextSecondary, fontSize = 12.sp)
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text("68%", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Black)
+                        Text("75%", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Black)
                         Spacer(modifier = Modifier.height(8.dp))
                         LinearProgressIndicator(
-                            progress = { 0.68f },
+                            progress = { 0.75f },
                             color = limeAccent,
                             trackColor = LifeOsTheme.SurfaceElevated,
                             modifier = Modifier
@@ -423,36 +502,36 @@ fun WorkoutScreen(
                                 .clip(RoundedCornerShape(4.dp))
                         )
                         Spacer(modifier = Modifier.height(6.dp))
-                        Text("No ritmo!", color = limeAccent, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        Text("Ritmo atlético", color = limeAccent, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                     }
                 }
 
-                Text("Insights", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text("Síntese Biométrica", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
 
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    BentoCard(modifier = Modifier.weight(1f)) {
+                    BentoCard(modifier = Modifier.weight(1f), contentPadding = 14.dp) {
                         Text("Séries/Sem", color = LifeOsTheme.TextSecondary, fontSize = 11.sp)
                         Spacer(modifier = Modifier.height(4.dp))
                         Text("56 séries", color = Color.White, fontWeight = FontWeight.Black, fontSize = 16.sp)
                         Text("↑ +6 vs ant.", color = limeAccent, fontSize = 10.sp)
                     }
-                    BentoCard(modifier = Modifier.weight(1.25f)) {
+                    BentoCard(modifier = Modifier.weight(1.3f), contentPadding = 14.dp) {
                         Text("Divisão", color = LifeOsTheme.TextSecondary, fontSize = 11.sp)
                         Spacer(modifier = Modifier.height(6.dp))
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             MacroDomainDonutRing()
                             Column {
-                                Text("42% Tração", color = limeAccent, fontSize = 10.sp)
-                                Text("33% Empurrão", color = LifeOsTheme.GreenHealth, fontSize = 10.sp)
-                                Text("25% Core", color = LifeOsTheme.AmberFocus, fontSize = 10.sp)
+                                Text("42% Tração", color = limeAccent, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                                Text("33% Empurrão", color = LifeOsTheme.GreenHealth, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                                Text("25% Core", color = LifeOsTheme.AmberFocus, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
                             }
                         }
                     }
-                    BentoCard(modifier = Modifier.weight(1f)) {
-                        Text("Melhor Dia", color = LifeOsTheme.TextSecondary, fontSize = 11.sp)
+                    BentoCard(modifier = Modifier.weight(1f), contentPadding = 14.dp) {
+                        Text("Pico", color = LifeOsTheme.TextSecondary, fontSize = 11.sp)
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text("Sexta ⭐", color = Color.White, fontWeight = FontWeight.Black, fontSize = 15.sp)
-                        Text("1.820 kcal", color = LifeOsTheme.AmberFocus, fontSize = 11.sp)
+                        Text("Sexta", color = Color.White, fontWeight = FontWeight.Black, fontSize = 16.sp)
+                        Text("1.820 kcal", color = LifeOsTheme.AmberFocus, fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }

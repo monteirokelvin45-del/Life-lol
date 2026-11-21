@@ -9,6 +9,8 @@ import android.speech.RecognizerIntent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -27,16 +29,22 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AccountBalanceWallet
 import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.FitnessCenter
+import androidx.compose.material.icons.rounded.LocalCafe
+import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.Mic
+import androidx.compose.material.icons.rounded.Psychology
 import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material.icons.rounded.UploadFile
+import androidx.compose.material.icons.rounded.WbSunny
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -54,7 +62,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -67,13 +77,16 @@ import com.lifeos.ui.components.BalanceWheel
 import com.lifeos.ui.components.BentoCard
 import com.lifeos.ui.components.ChronoNightingaleWheel24h
 import com.lifeos.ui.components.ConcentricFocusMacroRings
+import com.lifeos.ui.components.EyebrowCapsule
 import com.lifeos.ui.components.GhostSquadSilentAuraRow
+import com.lifeos.ui.components.GlowingIconOrb
 import com.lifeos.ui.components.HabitMicroHeatmap
 import com.lifeos.ui.components.HexagonalRpgRadarChart
+import com.lifeos.ui.components.LuxuryStatBadge
 import com.lifeos.ui.components.StreakWeekSpotlightBanner
 import com.lifeos.ui.theme.LifeOsTheme
-import kotlin.math.roundToInt
 import java.util.Locale
+import kotlin.math.roundToInt
 
 @Composable
 fun HomeScreen(
@@ -125,24 +138,27 @@ fun HomeScreen(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(LifeOsTheme.PureBlack),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 18.dp),
+            .background(Color.Transparent),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        // 1. Cabeçalho + Portal Mágico de IA (Voz / PDF / DOCX / WhatsApp)
+        // 1. Cabeçalho Editorial + Barra Glassmórfica do Portal Mágico de IA
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
+                    EyebrowCapsule(
                         text = state.timeContext.badgeLabel,
-                        color = LifeOsTheme.GreenHealth,
-                        style = MaterialTheme.typography.labelSmall
+                        accent = LifeOsTheme.GreenHealth
                     )
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         IconButton(
                             onClick = {
                                 val speechIntent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
@@ -163,51 +179,74 @@ fun HomeScreen(
                                 .size(34.dp)
                                 .clip(CircleShape)
                                 .background(LifeOsTheme.SurfaceElevated)
+                                .border(1.dp, LifeOsTheme.BorderSubtle, CircleShape)
                         ) {
                             Icon(
                                 imageVector = Icons.Rounded.Mic,
                                 contentDescription = "Portal por Voz",
                                 tint = LifeOsTheme.OrangeStreak,
-                                modifier = Modifier.size(18.dp)
+                                modifier = Modifier.size(16.dp)
                             )
                         }
 
-                        OutlinedButton(
-                            onClick = { showPortalModal = true },
-                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                        Row(
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(LifeOsTheme.PurpleStudy.copy(alpha = 0.16f))
+                                .border(1.dp, LifeOsTheme.PurpleStudy.copy(alpha = 0.45f), CircleShape)
+                                .clickable { showPortalModal = true }
+                                .padding(horizontal = 11.dp, vertical = 7.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
                                 imageVector = Icons.Rounded.AutoAwesome,
                                 contentDescription = null,
                                 tint = LifeOsTheme.PurpleStudy,
-                                modifier = Modifier.size(15.dp)
+                                modifier = Modifier.size(14.dp)
                             )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Portal IA", color = Color.White, fontSize = 12.sp)
+                            Spacer(modifier = Modifier.width(5.dp))
+                            Text(
+                                text = "Portal IA",
+                                color = Color.White,
+                                fontSize = 11.5.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                maxLines = 1,
+                                softWrap = false
+                            )
                         }
 
-                        Button(
-                            onClick = {
-                                documentPickerLauncher.launch(
-                                    arrayOf(
-                                        "application/pdf",
-                                        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                                        "text/*",
-                                        "image/*"
+                        Row(
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(LifeOsTheme.GreenHealth)
+                                .clickable {
+                                    documentPickerLauncher.launch(
+                                        arrayOf(
+                                            "application/pdf",
+                                            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                                            "text/*",
+                                            "image/*"
+                                        )
                                     )
-                                )
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = LifeOsTheme.GreenHealth),
-                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                                }
+                                .padding(horizontal = 11.dp, vertical = 7.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
                                 imageVector = Icons.Rounded.UploadFile,
-                                contentDescription = null,
+                                contentDescription = "Importar PDF ou DOCX",
                                 tint = Color.Black,
-                                modifier = Modifier.size(15.dp)
+                                modifier = Modifier.size(14.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("PDF/DOCX", color = Color.Black, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Text(
+                                text = "Importar",
+                                color = Color.Black,
+                                fontSize = 11.5.sp,
+                                fontWeight = FontWeight.Black,
+                                maxLines = 1,
+                                softWrap = false
+                            )
                         }
                     }
                 }
@@ -223,30 +262,47 @@ fun HomeScreen(
                     style = MaterialTheme.typography.bodyMedium
                 )
 
+                // Seletor Segmentado da Jornada de 24 Horas em Trilho Obsidiana
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        .clip(CircleShape)
+                        .background(LifeOsTheme.SurfaceDark)
+                        .border(1.dp, LifeOsTheme.BorderSubtle, CircleShape)
+                        .padding(4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     val modes = listOf(
                         TimeOfDayContext.MORNING_COGNITIVE to "07h Manhã",
                         TimeOfDayContext.AFTERNOON_EXECUTION to "14h Tarde",
                         TimeOfDayContext.LATE_AFTERNOON_PHYSIOLOGY to "18h Treino",
-                        TimeOfDayContext.NIGHT_CLOSURE_SLEEP to "22h Fechamento"
+                        TimeOfDayContext.NIGHT_CLOSURE_SLEEP to "22h Noite"
                     )
                     modes.forEach { (ctx, label) ->
-                        FilterChip(
-                            selected = state.timeContext == ctx,
-                            onClick = { viewModel.onIntent(HomeIntent.SelectTimeContext(ctx)) },
-                            label = { Text(label, fontSize = 12.sp) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = LifeOsTheme.SurfaceElevated,
-                                selectedLabelColor = Color.White,
-                                containerColor = LifeOsTheme.SurfaceDark,
-                                labelColor = LifeOsTheme.TextSecondary
+                        val active = state.timeContext == ctx
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(CircleShape)
+                                .background(
+                                    if (active) LifeOsTheme.SurfaceElevated else Color.Transparent
+                                )
+                                .let { m ->
+                                    if (active) m.border(1.dp, LifeOsTheme.BorderSpecular, CircleShape) else m
+                                }
+                                .clickable { viewModel.onIntent(HomeIntent.SelectTimeContext(ctx)) }
+                                .padding(vertical = 7.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = label,
+                                color = if (active) Color.White else LifeOsTheme.TextSecondary,
+                                fontSize = 11.sp,
+                                fontWeight = if (active) FontWeight.ExtraBold else FontWeight.Medium,
+                                maxLines = 1,
+                                softWrap = false
                             )
-                        )
+                        }
                     }
                 }
             }
@@ -254,9 +310,9 @@ fun HomeScreen(
 
         if (state.isIngesting) {
             item {
-                BentoCard {
+                BentoCard(glowAccent = LifeOsTheme.PurpleStudy) {
                     Text(
-                        text = "Portal Mágico lendo seu arquivo caótico em <5s...",
+                        text = "Portal Mágico estruturando seu documento em <5s...",
                         color = Color.White,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -271,15 +327,15 @@ fun HomeScreen(
 
         state.statusMessage?.let { msg ->
             item {
-                BentoCard(borderColor = LifeOsTheme.GreenHealth) {
+                BentoCard(borderColor = LifeOsTheme.GreenHealth, glowAccent = LifeOsTheme.GreenHealth) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(msg, color = LifeOsTheme.GreenHealth, modifier = Modifier.weight(1f), fontSize = 13.sp)
+                        Text(msg, color = LifeOsTheme.GreenHealth, modifier = Modifier.weight(1f), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                         TextButton(onClick = { viewModel.onIntent(HomeIntent.DismissMessage) }) {
-                            Text("OK", color = Color.White)
+                            Text("OK", color = Color.White, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -288,19 +344,15 @@ fun HomeScreen(
 
         if (state.activeTimer.isRunning) {
             item {
-                BentoCard(borderColor = LifeOsTheme.OrangeStreak) {
+                BentoCard(borderColor = LifeOsTheme.OrangeStreak, glowAccent = LifeOsTheme.OrangeStreak) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column {
-                            Text(
-                                text = state.activeTimer.label,
-                                color = LifeOsTheme.OrangeStreak,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold
-                            )
+                            EyebrowCapsule(text = state.activeTimer.label, accent = LifeOsTheme.OrangeStreak)
+                            Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = state.activeTimer.formattedRemaining,
                                 color = Color.White,
@@ -308,7 +360,7 @@ fun HomeScreen(
                                 fontWeight = FontWeight.Black
                             )
                         }
-                        OutlinedButton(onClick = { viewModel.onIntent(HomeIntent.StopActiveTimer) }) {
+                        OutlinedButton(onClick = { viewModel.onIntent(HomeIntent.StopActiveTimer) }, shape = CircleShape) {
                             Text("Encerrar", color = Color.White)
                         }
                     }
@@ -321,7 +373,7 @@ fun HomeScreen(
             when (state.timeContext) {
                 TimeOfDayContext.MORNING_COGNITIVE -> MorningPriorityCard(
                     dueCount = state.dueStudies.size,
-                    firstTopic = state.dueStudies.firstOrNull()?.let { "${it.subject} (Revisão Ebbinghaus)" },
+                    firstTopic = state.dueStudies.firstOrNull()?.let { "${it.subject} · Revisão Ebbinghaus" },
                     activeBook = state.activeBooks.firstOrNull(),
                     onStartPomodoro25 = { viewModel.onIntent(HomeIntent.StartPomodoroFocus(25)) },
                     onStartPomodoro50 = { viewModel.onIntent(HomeIntent.StartPomodoroFocus(50)) },
@@ -352,7 +404,7 @@ fun HomeScreen(
             }
         }
 
-        // 2.5. Holofote de Streak & Consistência Semanal (Referências 06 & 07)
+        // 2.5. Holofote de Streak & Consistência Semanal
         item {
             val firstHabit = state.habits.firstOrNull()
             val lastColFlags = (0..6).map { rowIdx ->
@@ -369,36 +421,35 @@ fun HomeScreen(
                 weekCompletedFlags = lastColFlags,
                 progressPercent = pct,
                 shieldBadgeText = if (state.streakFreeze.isFreezeActiveToday) {
-                    "🛡️ Escudo Ativo"
+                    "Escudo Ativo"
                 } else {
-                    "🛡️ ${state.streakFreeze.availableCredits} escudos"
+                    "${state.streakFreeze.availableCredits} Cristais"
                 }
             )
         }
 
         // 3. A Roda do Equilíbrio Cósmico (Pilar 5.1 & Pilar 6.2)
         item {
-            BentoCard {
+            BentoCard(glowAccent = LifeOsTheme.PurpleStudy) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "Roda do Equilíbrio Cósmico",
-                        color = Color.White,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Black
-                    )
-                    Text(
-                        text = "✨ 120 FPS Zero-GC",
-                        color = LifeOsTheme.AmberFocus,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        EyebrowCapsule(text = "TELEMETRIA HOLÍSTICA", accent = LifeOsTheme.PurpleStudy)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Roda do Equilíbrio Cósmico",
+                            color = Color.White,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Black
+                        )
+                    }
+                    LuxuryStatBadge(label = "120 FPS Zero-GC", accent = LifeOsTheme.AmberFocus)
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
                 Box(
                     modifier = Modifier.fillMaxWidth(),
@@ -412,35 +463,35 @@ fun HomeScreen(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
                 val totalCheckIns = state.habits.sumOf { it.totalCheckIns }
-                Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     DomainScoreRow(
-                        iconGlyph = "➕",
-                        label = "Corpo (Peso 30%)",
-                        subStats = "✓ ${state.todayWorkout?.completedExercisesCount ?: 2} ex · Fisiologia",
+                        icon = Icons.Rounded.FitnessCenter,
+                        label = "Corpo · Peso 30%",
+                        subStats = "${state.todayWorkout?.completedExercisesCount ?: 3} ex concluídos · Fisiologia",
                         score = state.balanceWheel.bodyScore0to10,
                         color = LifeOsTheme.GreenHealth
                     )
                     DomainScoreRow(
-                        iconGlyph = "🧠",
-                        label = "Foco (Peso 25%)",
-                        subStats = "✓ ${state.dueStudies.size} Ebbinghaus · Leitura",
+                        icon = Icons.Rounded.Psychology,
+                        label = "Foco · Peso 25%",
+                        subStats = "${state.dueStudies.size} na fila Ebbinghaus · Leitura Ativa",
                         score = state.balanceWheel.focusScore0to10,
                         color = LifeOsTheme.PurpleStudy
                     )
                     DomainScoreRow(
-                        iconGlyph = "💼",
-                        label = "Finanças (Peso 25%)",
-                        subStats = "Caixa Blindado · Poupança",
+                        icon = Icons.Rounded.AccountBalanceWallet,
+                        label = "Finanças · Peso 25%",
+                        subStats = "SQLCipher Vault · Liquidez Positiva",
                         score = state.balanceWheel.financeScore0to10,
                         color = LifeOsTheme.CyanFinance
                     )
                     DomainScoreRow(
-                        iconGlyph = "🔥",
-                        label = "Consistência (Peso 20%)",
-                        subStats = "✓ $totalCheckIns check-ins · $topStreak dias",
+                        icon = Icons.Rounded.LocalFireDepartment,
+                        label = "Consistência · Peso 20%",
+                        subStats = "$totalCheckIns check-ins · $topStreak dias seguidos",
                         score = state.balanceWheel.consistencyScore0to10,
                         color = LifeOsTheme.OrangeStreak
                     )
@@ -451,13 +502,15 @@ fun HomeScreen(
         // 3.2. Motor Circadiano, Caffeine Cutoff & Chrono Wheel de 24 Horas (Pilar 5.2 & Pilar 6.12)
         item {
             val circ = state.circadianStatus
-            BentoCard(borderColor = if (circ.isPastCaffeineCutoff) LifeOsTheme.AmberFocus.copy(alpha = 0.5f) else LifeOsTheme.CyanFinance.copy(alpha = 0.45f)) {
-                Text(
-                    text = "🧬 MOTOR CIRCADIANO & CHRONO WHEEL 24H",
-                    color = LifeOsTheme.CyanFinance,
-                    style = MaterialTheme.typography.labelSmall
+            BentoCard(
+                borderColor = if (circ.isPastCaffeineCutoff) LifeOsTheme.AmberFocus.copy(alpha = 0.5f) else LifeOsTheme.CyanFinance.copy(alpha = 0.45f),
+                glowAccent = LifeOsTheme.CyanFinance
+            ) {
+                EyebrowCapsule(
+                    text = "MOTOR CIRCADIANO · CHRONO WHEEL 24H",
+                    accent = LifeOsTheme.CyanFinance
                 )
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(6.dp))
                 Text(
                     text = circ.activeBiologicalWindowTitle,
                     color = Color.White,
@@ -469,7 +522,7 @@ fun HomeScreen(
                     color = LifeOsTheme.TextSecondary,
                     fontSize = 12.sp
                 )
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -484,27 +537,28 @@ fun HomeScreen(
                     )
                     Column(
                         modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                        verticalArrangement = Arrangement.spacedBy(7.dp)
                     ) {
-                        Text("🧠 Foco: ${circ.intellectualPeakWindow}", color = LifeOsTheme.PurpleStudy, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                        Text("☕ Corte: ${circ.caffeineCutoffTime}", color = if (circ.isPastCaffeineCutoff) LifeOsTheme.RedExpense else LifeOsTheme.AmberFocus, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                        Text("🏋️ Força: ${circ.neuromuscularPeakWindow}", color = LifeOsTheme.GreenHealth, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                        Text("🌙 Sono: ${circ.sleepGateTime}", color = LifeOsTheme.CyanFinance, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        CircadianWindowRow(Icons.Rounded.Psychology, "Foco: ${circ.intellectualPeakWindow}", LifeOsTheme.PurpleStudy)
+                        CircadianWindowRow(Icons.Rounded.LocalCafe, "Corte: ${circ.caffeineCutoffTime}", if (circ.isPastCaffeineCutoff) LifeOsTheme.RedExpense else LifeOsTheme.AmberFocus)
+                        CircadianWindowRow(Icons.Rounded.FitnessCenter, "Força: ${circ.neuromuscularPeakWindow}", LifeOsTheme.GreenHealth)
+                        CircadianWindowRow(Icons.Rounded.Bedtime, "Sono: ${circ.sleepGateTime}", LifeOsTheme.CyanFinance)
                     }
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(10.dp))
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(RoundedCornerShape(14.dp))
                         .background(LifeOsTheme.SurfaceElevated)
-                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                        .border(1.dp, LifeOsTheme.BorderSubtle, RoundedCornerShape(14.dp))
+                        .padding(horizontal = 12.dp, vertical = 9.dp)
                 ) {
                     Text(
                         text = circ.caffeineGuidanceLabel,
                         color = if (circ.isPastCaffeineCutoff) LifeOsTheme.AmberFocus else LifeOsTheme.GreenHealth,
-                        fontSize = 11.sp,
+                        fontSize = 11.5.sp,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
@@ -523,8 +577,8 @@ fun HomeScreen(
                     horizontalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     ConcentricFocusMacroRings(
-                        outerFocusProgress = state.balanceWheel.studyFraction.coerceAtLeast(0.64f),
-                        middleMacroProgress = state.balanceWheel.healthFraction.coerceAtLeast(0.72f),
+                        outerFocusProgress = state.balanceWheel.studyFraction.coerceAtLeast(0.68f),
+                        middleMacroProgress = state.balanceWheel.healthFraction.coerceAtLeast(0.75f),
                         innerReadingProgress = bookProg,
                         modifier = Modifier.size(134.dp)
                     )
@@ -532,10 +586,12 @@ fun HomeScreen(
                         modifier = Modifier.weight(1f),
                         verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
+                        EyebrowCapsule(text = "FISIOLOGIA & DEEP WORK", accent = Color(0xFFFF2A6D))
+                        Spacer(modifier = Modifier.height(2.dp))
                         Text("Anéis de Foco & Macros", color = Color.White, fontWeight = FontWeight.Black, fontSize = 16.sp)
-                        Text("● Anel Externo: Blocos Pomodoro & Retenção", color = Color(0xFFFF2A6D), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                        Text("● Anel Médio: Proteína (160g) & Calistenia", color = Color(0xFFA8FF00), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                        Text("● Anel Interno: Hidratação (3L) & Leitura", color = LifeOsTheme.CyanFinance, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        Text("● Externo: Blocos Pomodoro & Retenção", color = Color(0xFFFF2A6D), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        Text("● Médio: Proteína (160g) & Calistenia", color = Color(0xFFA8FF00), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        Text("● Interno: Hidratação (3L) & Leitura", color = LifeOsTheme.CyanFinance, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
@@ -544,7 +600,7 @@ fun HomeScreen(
         // 3.6. Ghost Multiplayer Assíncrono — Esquadrão Silencioso (Pilar 5.4)
         if (state.ghostSquad.isNotEmpty()) {
             item {
-                BentoCard {
+                BentoCard(glowAccent = LifeOsTheme.CyanFinance) {
                     GhostSquadSilentAuraRow(
                         codenames = state.ghostSquad.map { it.codename },
                         domainLabels = state.ghostSquad.map {
@@ -566,19 +622,20 @@ fun HomeScreen(
         // 3.8. Radar Hexagonal de Atributos RPG (Pilar 6.14)
         item {
             val rpg = state.rpgAttributes
-            BentoCard {
+            BentoCard(glowAccent = LifeOsTheme.GreenHealth) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
-                        Text("AVATAR DE ALTA PERFORMANCE", color = LifeOsTheme.PurpleStudy, style = MaterialTheme.typography.labelSmall)
+                    Column(modifier = Modifier.weight(1f)) {
+                        EyebrowCapsule(text = "AVATAR DE ALTA PERFORMANCE", accent = LifeOsTheme.PurpleStudy)
+                        Spacer(modifier = Modifier.height(4.dp))
                         Text("Nv. ${rpg.avatarLevel} · ${rpg.archetypeTitle}", color = Color.White, fontWeight = FontWeight.Black, fontSize = 18.sp)
                     }
-                    Text("6 Vértices RPG", color = LifeOsTheme.GreenHealth, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    LuxuryStatBadge(label = "6 Vértices RPG", accent = LifeOsTheme.GreenHealth)
                 }
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(10.dp))
                 HexagonalRpgRadarChart(
                     normalizedAttributes6 = rpg.asNormalizedList(),
                     attributeScores0to100 = listOf(
@@ -611,7 +668,7 @@ fun HomeScreen(
                             fontSize = 16.sp
                         )
                         Text(
-                            text = "🔥 ${habit.currentStreak} dias mantidos · ${habit.completedThisWeek}/${habit.targetPerWeek} na semana",
+                            text = "${habit.currentStreak} dias seguidos · ${habit.completedThisWeek}/${habit.targetPerWeek} na semana",
                             color = LifeOsTheme.TextSecondary,
                             fontSize = 12.sp
                         )
@@ -620,8 +677,9 @@ fun HomeScreen(
                         onClick = { viewModel.onIntent(HomeIntent.ToggleHabit(habit.id)) },
                         modifier = Modifier
                             .size(40.dp)
-                            .clip(RoundedCornerShape(12.dp))
+                            .clip(RoundedCornerShape(13.dp))
                             .background(if (habit.completedToday) accent else LifeOsTheme.SurfaceElevated)
+                            .border(1.dp, if (habit.completedToday) accent else LifeOsTheme.BorderSubtle, RoundedCornerShape(13.dp))
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.Check,
@@ -683,6 +741,30 @@ fun HomeScreen(
 }
 
 @Composable
+private fun CircadianWindowRow(
+    icon: ImageVector,
+    text: String,
+    accent: Color
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = accent,
+            modifier = Modifier.size(14.dp)
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(
+            text = text,
+            color = accent,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1
+        )
+    }
+}
+
+@Composable
 private fun GhostSquadEditDialog(
     initialNames: List<String>,
     onDismiss: () -> Unit,
@@ -695,11 +777,11 @@ private fun GhostSquadEditDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = LifeOsTheme.SurfaceDark,
-        title = { Text("👻 Configurar Esquadrão Silencioso", color = Color.White, fontWeight = FontWeight.Bold) },
+        title = { Text("Configurar Esquadrão Silencioso", color = Color.White, fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    text = "Até 3 amigos para presença de foco compartilhada sem chat ou distrações:",
+                    text = "Até 3 parceiros para presença de foco compartilhada sem salas de chat:",
                     color = LifeOsTheme.TextSecondary,
                     fontSize = 12.sp
                 )
@@ -724,42 +806,40 @@ private fun GhostSquadEditDialog(
 
 @Composable
 private fun DomainScoreRow(
-    iconGlyph: String,
+    icon: ImageVector,
     label: String,
     subStats: String,
     score: Float,
     color: Color
 ) {
+    val pct = (score * 10f).roundToInt().coerceIn(0, 100)
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
             .background(LifeOsTheme.SurfaceElevated)
-            .padding(horizontal = 14.dp, vertical = 12.dp),
+            .border(1.dp, LifeOsTheme.BorderSubtle, RoundedCornerShape(18.dp))
+            .padding(horizontal = 12.dp, vertical = 11.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-            Box(
-                modifier = Modifier
-                    .size(38.dp)
-                    .clip(CircleShape)
-                    .background(color.copy(alpha = 0.18f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(iconGlyph, fontSize = 16.sp)
-            }
+            GlowingIconOrb(
+                icon = icon,
+                tint = color,
+                size = 38.dp,
+                iconSize = 18.dp
+            )
             Spacer(modifier = Modifier.width(12.dp))
-            Column {
-                Text(label, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                Text(subStats, color = LifeOsTheme.TextSecondary, fontSize = 11.sp)
+            Column(modifier = Modifier.weight(1f)) {
+                Text(label, color = Color.White, fontSize = 13.5.sp, fontWeight = FontWeight.Bold)
+                Text(subStats, color = LifeOsTheme.TextSecondary, fontSize = 11.sp, maxLines = 1)
             }
         }
-        Text(
-            text = "${(score * 10f).roundToInt()}%  ›",
-            color = LifeOsTheme.GreenHealth,
-            fontWeight = FontWeight.Bold,
-            fontSize = 14.sp
+        Spacer(modifier = Modifier.width(8.dp))
+        LuxuryStatBadge(
+            label = "$pct%",
+            accent = color
         )
     }
 }
@@ -773,11 +853,14 @@ private fun MorningPriorityCard(
     onStartPomodoro50: () -> Unit,
     onCompleteTopReview: () -> Unit
 ) {
-    BentoCard(borderColor = LifeOsTheme.PurpleStudy.copy(alpha = 0.55f)) {
-        Text("🌅 07:00 · DESPERTAR & FOCO INTELECTUAL", color = LifeOsTheme.PurpleStudy, style = MaterialTheme.typography.labelSmall)
-        Spacer(modifier = Modifier.height(6.dp))
+    BentoCard(
+        borderColor = LifeOsTheme.PurpleStudy.copy(alpha = 0.55f),
+        glowAccent = LifeOsTheme.PurpleStudy
+    ) {
+        EyebrowCapsule(text = "07:00 · PICO COGNITIVO & EBBINGHAUS", accent = LifeOsTheme.PurpleStudy)
+        Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = if (firstTopic != null) "Hoje você precisa revisar $firstTopic" else "Curva de Ebbinghaus 100% em dia!",
+            text = if (firstTopic != null) "Prioridade neural: $firstTopic" else "Curva de Ebbinghaus 100% blindada hoje!",
             color = Color.White,
             fontWeight = FontWeight.Bold,
             fontSize = 17.sp
@@ -785,9 +868,10 @@ private fun MorningPriorityCard(
         activeBook?.let { book ->
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = "Livro atual: '${book.title}'. ${book.morningTargetRangeLabel}",
+                text = "Livro ativo: '${book.title}' · ${book.morningTargetRangeLabel}",
                 color = LifeOsTheme.GreenHealth,
-                fontSize = 13.sp
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold
             )
             Text(
                 text = book.projectedFinishSummary,
@@ -795,22 +879,23 @@ private fun MorningPriorityCard(
                 fontSize = 12.sp
             )
         }
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(14.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(
                 onClick = onStartPomodoro25,
+                shape = CircleShape,
                 colors = ButtonDefaults.buttonColors(containerColor = LifeOsTheme.PurpleStudy)
             ) {
                 Icon(Icons.Rounded.Timer, contentDescription = null, modifier = Modifier.size(15.dp))
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("25m", fontSize = 12.sp)
+                Text("25m Deep", fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
             }
-            OutlinedButton(onClick = onStartPomodoro50) {
-                Text("50m Foco", color = Color.White, fontSize = 12.sp)
+            OutlinedButton(onClick = onStartPomodoro50, shape = CircleShape) {
+                Text("50m Foco", color = Color.White, fontSize = 12.sp, maxLines = 1, softWrap = false)
             }
             if (dueCount > 0) {
-                OutlinedButton(onClick = onCompleteTopReview) {
-                    Text("✓ Revisado", color = LifeOsTheme.GreenHealth, fontSize = 12.sp)
+                OutlinedButton(onClick = onCompleteTopReview, shape = CircleShape) {
+                    Text("✓ Revisado", color = LifeOsTheme.GreenHealth, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                 }
             }
         }
@@ -825,9 +910,12 @@ private fun AfternoonExecutionCard(
     onStartPomodoro25: () -> Unit,
     onStartPomodoro50: () -> Unit
 ) {
-    BentoCard(borderColor = LifeOsTheme.CyanFinance.copy(alpha = 0.45f)) {
-        Text("☀️ 14:00 · GESTÃO DE GASTOS & PRODUTIVIDADE", color = LifeOsTheme.CyanFinance, style = MaterialTheme.typography.labelSmall)
-        Spacer(modifier = Modifier.height(6.dp))
+    BentoCard(
+        borderColor = LifeOsTheme.CyanFinance.copy(alpha = 0.45f),
+        glowAccent = LifeOsTheme.CyanFinance
+    ) {
+        EyebrowCapsule(text = "14:00 · EXECUÇÃO & GESTÃO DE CAIXA", accent = LifeOsTheme.CyanFinance)
+        Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = "$completedToday de $totalHabits rituais concluídos hoje",
             color = Color.White,
@@ -837,17 +925,17 @@ private fun AfternoonExecutionCard(
         if (correlationInsight.isNotBlank()) {
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = "💡 $correlationInsight",
+                text = correlationInsight,
                 color = LifeOsTheme.AmberFocus,
                 fontSize = 12.sp
             )
         }
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(12.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = onStartPomodoro25) {
+            OutlinedButton(onClick = onStartPomodoro25, shape = CircleShape) {
                 Text("Pomodoro 25m", color = Color.White, fontSize = 12.sp)
             }
-            OutlinedButton(onClick = onStartPomodoro50) {
+            OutlinedButton(onClick = onStartPomodoro50, shape = CircleShape) {
                 Text("Pomodoro 50m", color = Color.White, fontSize = 12.sp)
             }
         }
@@ -860,13 +948,16 @@ private fun PhysiologyPriorityCard(
     completedExercises: Int,
     totalExercises: Int
 ) {
-    BentoCard(borderColor = LifeOsTheme.GreenHealth.copy(alpha = 0.6f)) {
-        Text("🏋️ 18:00 · MODO FISIOLOGIA & TREINO", color = LifeOsTheme.GreenHealth, style = MaterialTheme.typography.labelSmall)
-        Spacer(modifier = Modifier.height(6.dp))
+    BentoCard(
+        borderColor = LifeOsTheme.GreenHealth.copy(alpha = 0.6f),
+        glowAccent = LifeOsTheme.GreenHealth
+    ) {
+        EyebrowCapsule(text = "18:00 · PICO NEUROMUSCULAR & FORÇA", accent = LifeOsTheme.GreenHealth)
+        Spacer(modifier = Modifier.height(8.dp))
         Text("TREINO DE HOJE: ${routineName.uppercase(Locale.ROOT)}", color = Color.White, fontWeight = FontWeight.Black, fontSize = 18.sp)
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = "$completedExercises de $totalExercises exercícios concluídos · Cronômetro de 90s com vibração dupla ativo na aba Treino",
+            text = "$completedExercises de $totalExercises exercícios concluídos · Cronômetro háptico de 90s pronto na aba Treino",
             color = LifeOsTheme.TextSecondary,
             fontSize = 13.sp
         )
@@ -880,18 +971,21 @@ private fun NightClosureBannerCard(
     spentToday: Double,
     currency: String
 ) {
-    BentoCard(borderColor = LifeOsTheme.OrangeStreak.copy(alpha = 0.7f)) {
-        Text("🌙 22:00 · FECHAMENTO DO DIA & RODA DA VIDA", color = LifeOsTheme.OrangeStreak, style = MaterialTheme.typography.labelSmall)
-        Spacer(modifier = Modifier.height(6.dp))
+    BentoCard(
+        borderColor = LifeOsTheme.OrangeStreak.copy(alpha = 0.7f),
+        glowAccent = LifeOsTheme.OrangeStreak
+    ) {
+        EyebrowCapsule(text = "22:00 · FECHAMENTO & HIGIENE DO SONO", accent = LifeOsTheme.OrangeStreak)
+        Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = String.format(Locale.US, "Score do Dia: %.1f / 10 · 🔥 Streak de %d Dias Mantido!", overallScore, topStreak),
+            text = String.format(Locale.US, "Score do Dia: %.1f / 10 · Streak de %d Dias", overallScore, topStreak),
             color = Color.White,
             fontWeight = FontWeight.Black,
             fontSize = 18.sp
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = String.format(Locale.US, "Saídas hoje: %.2f %s · Micro-Heatmaps acesos para preservar sua sequência.", spentToday, currency),
+            text = "Saídas hoje: ${LifeOsTheme.formatMoney(spentToday, currency, decimals = 2)} · Micro-Heatmaps sincronizados.",
             color = LifeOsTheme.TextSecondary,
             fontSize = 13.sp
         )
@@ -921,11 +1015,11 @@ private fun PortalMagicoInputDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = LifeOsTheme.SurfaceDark,
-        title = { Text("✨ Portal Mágico de IA", color = Color.White, fontWeight = FontWeight.Bold) },
+        title = { Text("Portal Mágico de IA", color = Color.White, fontWeight = FontWeight.Black) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    text = "Motor de IA (100% funcional Offline ou via LLM em Nuvem):",
+                    text = "Motor Híbrido (Offline Local instantâneo ou Cloud LLM com Keystore):",
                     color = LifeOsTheme.TextSecondary,
                     fontSize = 11.sp
                 )
@@ -936,9 +1030,9 @@ private fun PortalMagicoInputDialog(
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     listOf(
-                        AiLlmProvider.OFFLINE_LOCAL to "⚡ Offline Local",
-                        AiLlmProvider.GOOGLE_GEMINI to "✨ Gemini 2.0",
-                        AiLlmProvider.GROQ_CLOUD to "🚀 Groq 70B",
+                        AiLlmProvider.OFFLINE_LOCAL to "Offline Local",
+                        AiLlmProvider.GOOGLE_GEMINI to "Gemini 2.0",
+                        AiLlmProvider.GROQ_CLOUD to "Groq 70B",
                         AiLlmProvider.OPENAI to "OpenAI"
                     ).forEach { (prov, shortLabel) ->
                         FilterChip(
@@ -970,7 +1064,7 @@ private fun PortalMagicoInputDialog(
                 }
 
                 Text(
-                    text = "Cole qualquer ficha caótica, edital, recibo ou frase falada:",
+                    text = "Cole qualquer ficha, edital, recibo ou comando em linguagem natural:",
                     color = LifeOsTheme.TextSecondary,
                     fontSize = 12.sp
                 )
@@ -1012,18 +1106,18 @@ private fun ConfirmSistemaPreviewDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = LifeOsTheme.SurfaceDark,
-        title = { Text("Sistema Estruturado pela IA", color = Color.White, fontWeight = FontWeight.Bold) },
+        title = { Text("Sistema Estruturado pela IA", color = Color.White, fontWeight = FontWeight.Black) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    text = "Revise os módulos extraídos antes de configurar alarmes, treinos e orçamento:",
+                    text = "Revise os módulos extraídos antes de ativar alarmes, treinos e orçamento:",
                     color = LifeOsTheme.TextSecondary,
                     fontSize = 12.sp
                 )
                 Text(
-                    text = "⚡ Hábitos detectados: ${plan.detectedHabits.size}",
+                    text = "Hábitos detectados: ${plan.detectedHabits.size}",
                     color = LifeOsTheme.GreenHealth,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     fontSize = 13.sp
                 )
                 plan.detectedHabits.take(3).forEach { h ->
@@ -1031,9 +1125,9 @@ private fun ConfirmSistemaPreviewDialog(
                 }
 
                 Text(
-                    text = "🏋️ Rotinas de Treino: ${plan.detectedWorkouts.size}",
+                    text = "Rotinas de Treino: ${plan.detectedWorkouts.size}",
                     color = LifeOsTheme.OrangeStreak,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     fontSize = 13.sp
                 )
                 plan.detectedWorkouts.take(2).forEach { w ->
@@ -1041,9 +1135,9 @@ private fun ConfirmSistemaPreviewDialog(
                 }
 
                 Text(
-                    text = "🧠 Estudos Ebbinghaus (Alarme 07:00): ${plan.detectedStudies.size}",
+                    text = "Estudos Ebbinghaus (Alarme 07:00): ${plan.detectedStudies.size}",
                     color = LifeOsTheme.PurpleStudy,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     fontSize = 13.sp
                 )
                 plan.detectedStudies.take(3).forEach { s ->
@@ -1051,9 +1145,9 @@ private fun ConfirmSistemaPreviewDialog(
                 }
 
                 Text(
-                    text = "💰 Registros Financeiros: ${plan.detectedFinances.size}",
+                    text = "Registros Financeiros: ${plan.detectedFinances.size}",
                     color = LifeOsTheme.CyanFinance,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     fontSize = 13.sp
                 )
             }

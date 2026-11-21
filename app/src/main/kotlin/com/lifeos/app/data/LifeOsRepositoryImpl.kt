@@ -836,6 +836,9 @@ class LifeOsRepositoryImpl @Inject constructor(
                 dao.insertHabitLog(HabitLogEntity(habitId = h3, epochDay = epoch, completed = true, loggedAtMillis = logMillis))
             }
         }
+        val morningTodayMillis = today.atTime(7, 25).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        dao.insertHabitLog(HabitLogEntity(habitId = h2, epochDay = today.toEpochDay(), completed = true, loggedAtMillis = morningTodayMillis + 3_600_000L, note = "Primeiros 2L concluídos"))
+        dao.insertHabitLog(HabitLogEntity(habitId = h3, epochDay = today.toEpochDay(), completed = true, loggedAtMillis = morningTodayMillis, note = "18 pág. em foco profundo"))
 
         dao.upsertGhostSquadMembers(
             listOf(
@@ -867,8 +870,8 @@ class LifeOsRepositoryImpl @Inject constructor(
             listOf(
                 ExerciseEntity(routineId = routineId, name = "Barra Fixa Pronada", targetSets = 4, targetReps = 10, restSeconds = 90, orderIndex = 0, completedSetsToday = 2, lastCompletedEpochDay = today.toEpochDay(), lastWeightKg = 10f),
                 ExerciseEntity(routineId = routineId, name = "Paralelas (Dips Profundos)", targetSets = 4, targetReps = 12, restSeconds = 90, orderIndex = 1, completedSetsToday = 4, lastCompletedEpochDay = today.toEpochDay(), lastWeightKg = 12f),
-                ExerciseEntity(routineId = routineId, name = "Remada Australiana", targetSets = 3, targetReps = 15, restSeconds = 75, orderIndex = 2),
-                ExerciseEntity(routineId = routineId, name = "Chin-ups Supinados", targetSets = 3, targetReps = 10, restSeconds = 90, orderIndex = 3)
+                ExerciseEntity(routineId = routineId, name = "Remada Australiana", targetSets = 3, targetReps = 15, restSeconds = 75, orderIndex = 2, completedSetsToday = 3, lastCompletedEpochDay = today.toEpochDay(), lastWeightKg = 8f),
+                ExerciseEntity(routineId = routineId, name = "Chin-ups Supinados", targetSets = 3, targetReps = 10, restSeconds = 90, orderIndex = 3, completedSetsToday = 3, lastCompletedEpochDay = today.toEpochDay(), lastWeightKg = 10f)
             )
         )
 
@@ -876,7 +879,8 @@ class LifeOsRepositoryImpl @Inject constructor(
             listOf(
                 StudyTopicEntity(subject = "Cálculo Integral", topic = "Integração por Partes & Substituição Trigonométrica", stage = 1, nextReviewEpochDay = today.toEpochDay(), reviewCount = 2),
                 StudyTopicEntity(subject = "Arquitetura Android", topic = "Kotlin Coroutines, StateFlow & UDF", stage = 2, nextReviewEpochDay = today.toEpochDay(), reviewCount = 3),
-                StudyTopicEntity(subject = "Bancos de Dados", topic = "SQLCipher AES-256 & Índices B-Tree no Room", stage = 3, nextReviewEpochDay = today.plusDays(4).toEpochDay(), reviewCount = 4)
+                StudyTopicEntity(subject = "Bancos de Dados", topic = "SQLCipher AES-256 & Índices B-Tree no Room", stage = 3, nextReviewEpochDay = today.plusDays(7).toEpochDay(), lastReviewedEpochDay = today.toEpochDay(), reviewCount = 4),
+                StudyTopicEntity(subject = "Sistemas Distribuídos", topic = "Consenso Raft & Replicação Local-First", stage = 4, nextReviewEpochDay = today.plusDays(16).toEpochDay(), lastReviewedEpochDay = today.toEpochDay(), reviewCount = 5)
             )
         )
 

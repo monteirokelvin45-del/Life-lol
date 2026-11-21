@@ -26,12 +26,17 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Bolt
+import androidx.compose.material.icons.rounded.DirectionsCar
+import androidx.compose.material.icons.rounded.HomeWork
+import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.MenuBook
 import androidx.compose.material.icons.rounded.Mic
-import androidx.compose.material.icons.rounded.NotificationsNone
-import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Restaurant
+import androidx.compose.material.icons.rounded.TrendingUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -52,25 +57,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.lifeos.ui.components.AntiCharityCommitmentBanner
 import com.lifeos.ui.components.BentoCard
+import com.lifeos.ui.components.EyebrowCapsule
 import com.lifeos.ui.components.FluidSankeyCashflowChart
+import com.lifeos.ui.components.GlowingIconOrb
+import com.lifeos.ui.components.LuxuryStatBadge
 import com.lifeos.ui.components.MultivariateCorrelationScatterChart
 import com.lifeos.ui.components.SegmentedCategoryBar
+import com.lifeos.ui.components.SleekSearchBarPill
 import com.lifeos.ui.components.SpendingBurnMatrix
 import com.lifeos.ui.theme.LifeOsTheme
-import java.util.Locale
-
-private data class CategoryLegendRow(
-    val label: String,
-    val amountFormatted: String,
-    val fraction: Float,
-    val color: Color
-)
 
 private val categoryPalette = listOf(
     LifeOsTheme.PurpleStudy,
@@ -102,15 +105,6 @@ fun FinanceScreen(viewModel: FinanceViewModel) {
         }
     }
 
-    val categorySlicesUi = ov.categorySlices.mapIndexed { idx, s ->
-        CategoryLegendRow(
-            label = s.category,
-            amountFormatted = String.format(Locale.US, "%.0f %s", s.totalAmount, ov.currencyCode),
-            fraction = s.fraction,
-            color = categoryPalette[idx % categoryPalette.size]
-        )
-    }
-
     val filteredTransactions = remember(ov.recentTransactions, searchTx) {
         if (searchTx.isBlank()) {
             ov.recentTransactions
@@ -125,67 +119,70 @@ fun FinanceScreen(viewModel: FinanceViewModel) {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(LifeOsTheme.PureBlack),
+            .background(Color.Transparent),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        // 1. Barra Superior estilo Wallet (Referência 01: Avatar + Search Pill + Ícones)
+        // 1. Barra Superior estilo Wallet (Referência 01: Orbe + Search Pill + Botão Novo)
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(LifeOsTheme.SurfaceElevated),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("⚡", fontSize = 18.sp)
-                }
+                GlowingIconOrb(
+                    icon = Icons.Rounded.Lock,
+                    tint = LifeOsTheme.CyanFinance,
+                    size = 42.dp,
+                    iconSize = 18.dp
+                )
 
-                OutlinedTextField(
+                SleekSearchBarPill(
                     value = searchTx,
                     onValueChange = { searchTx = it },
-                    leadingIcon = {
-                        Icon(Icons.Rounded.Search, contentDescription = null, tint = LifeOsTheme.TextSecondary)
-                    },
-                    placeholder = { Text("Search", color = LifeOsTheme.TextSecondary, fontSize = 13.sp) },
-                    singleLine = true,
-                    shape = RoundedCornerShape(20.dp),
+                    placeholder = "Buscar categoria ou nota...",
                     modifier = Modifier.weight(1f)
                 )
 
                 IconButton(
                     onClick = { showAddTxDialog = true },
                     modifier = Modifier
-                        .size(40.dp)
+                        .size(42.dp)
                         .clip(CircleShape)
-                        .background(LifeOsTheme.SurfaceElevated)
+                        .background(LifeOsTheme.CyanFinance)
                 ) {
-                    Icon(Icons.Rounded.NotificationsNone, contentDescription = null, tint = Color.White)
+                    Icon(Icons.Rounded.Add, contentDescription = "Novo lançamento", tint = Color.Black)
                 }
             }
         }
 
-        // 2. Hero Card Metálico Escuro "Wallet" (Referência 01)
+        // 2. Cartão Titânio Escovado "Life OS Vault · SQLCipher AES-256" (Referência 01)
         item {
+            val cardShape = RoundedCornerShape(30.dp)
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(28.dp))
+                    .clip(cardShape)
                     .background(
                         Brush.linearGradient(
                             colors = listOf(
-                                Color(0xFF232429),
-                                Color(0xFF111215),
-                                Color(0xFF0A0A0C)
+                                Color(0xFF222634),
+                                Color(0xFF12141C),
+                                Color(0xFF0A0B0F)
                             )
                         )
                     )
-                    .border(1.dp, Color(0xFF2A2B30), RoundedCornerShape(28.dp))
+                    .border(
+                        width = 1.dp,
+                        brush = Brush.linearGradient(
+                            colors = listOf(
+                                LifeOsTheme.CyanFinance.copy(alpha = 0.48f),
+                                Color.White.copy(alpha = 0.14f),
+                                LifeOsTheme.BorderSubtle
+                            )
+                        ),
+                        shape = cardShape
+                    )
                     .padding(22.dp)
             ) {
                 Row(
@@ -193,20 +190,19 @@ fun FinanceScreen(viewModel: FinanceViewModel) {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Wallet", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-                    Icon(
-                        imageVector = Icons.Rounded.Add,
-                        contentDescription = "Novo lançamento",
-                        tint = Color.White,
-                        modifier = Modifier
-                            .size(22.dp)
-                            .clickable { showAddTxDialog = true }
+                    EyebrowCapsule(
+                        text = "SQLCIPHER AES-256 VAULT",
+                        accent = LifeOsTheme.CyanFinance
+                    )
+                    LuxuryStatBadge(
+                        label = "+${LifeOsTheme.formatMoney(ov.totalIncomeMonth, ov.currencyCode, 0)}",
+                        accent = LifeOsTheme.GreenHealth
                     )
                 }
-                Spacer(modifier = Modifier.height(6.dp))
-                Text("Life OS Vault · SQLCipher", color = LifeOsTheme.TextSecondary, fontSize = 17.sp)
+                Spacer(modifier = Modifier.height(10.dp))
+                Text("Saldo Líquido Blindado", color = LifeOsTheme.TextSecondary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
 
-                Spacer(modifier = Modifier.height(42.dp))
+                Spacer(modifier = Modifier.height(26.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -215,55 +211,56 @@ fun FinanceScreen(viewModel: FinanceViewModel) {
                 ) {
                     Column {
                         Text(
-                            text = String.format(Locale.US, "%.2f %s", ov.netBalanceMonth, ov.currencyCode),
+                            text = LifeOsTheme.formatMoney(ov.netBalanceMonth, ov.currencyCode, decimals = 2),
                             color = Color.White,
                             fontSize = 30.sp,
-                            fontWeight = FontWeight.Black
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = (-0.8).sp
                         )
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text("Account ** 5087", color = LifeOsTheme.TextSecondary, fontSize = 12.sp)
+                        Text("Hardware Keystore · Conta ** 5087", color = LifeOsTheme.TextSecondary, fontSize = 11.5.sp)
                     }
 
                     Column(horizontalAlignment = Alignment.End) {
                         Row {
                             Box(
                                 modifier = Modifier
-                                    .size(18.dp)
+                                    .size(20.dp)
                                     .clip(CircleShape)
                                     .background(Color(0xFFEB001B))
                             )
                             Box(
                                 modifier = Modifier
-                                    .offset(x = (-6).dp)
-                                    .size(18.dp)
+                                    .offset(x = (-7).dp)
+                                    .size(20.dp)
                                     .clip(CircleShape)
-                                    .background(Color(0xFFF79E1B).copy(alpha = 0.9f))
+                                    .background(Color(0xFFF79E1B).copy(alpha = 0.92f))
                             )
                         }
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text("**** 3264", color = LifeOsTheme.TextSecondary, fontSize = 12.sp)
+                        Text("**** 3264", color = LifeOsTheme.TextSecondary, fontSize = 11.5.sp)
                     }
                 }
             }
         }
 
-        // 3. Linha Bento Dupla: "Spending" (Pílulas Multicoloridas) + "Top Canais" (Referência 01)
+        // 3. Linha Bento Dupla: "Spending" + "Canais Ativos" com Squircles Vetoriais Escuros
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                BentoCard(modifier = Modifier.weight(1.1f)) {
-                    Text("Spending", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                BentoCard(modifier = Modifier.weight(1.08f)) {
+                    Text("Saídas do Mês", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                     Text(
-                        text = String.format(Locale.US, "-%.0f %s no mês", ov.totalExpenseMonth, ov.currencyCode),
+                        text = "-${LifeOsTheme.formatMoney(ov.totalExpenseMonth, ov.currencyCode, 0)}",
                         color = LifeOsTheme.TextSecondary,
-                        fontSize = 11.sp
+                        fontSize = 11.5.sp
                     )
                     Spacer(modifier = Modifier.height(14.dp))
                     SegmentedCategoryBar(
-                        fractions = if (categorySlicesUi.isNotEmpty()) {
-                            categorySlicesUi.map { it.fraction }
+                        fractions = if (ov.categorySlices.isNotEmpty()) {
+                            ov.categorySlices.map { it.fraction }
                         } else {
                             listOf(0.42f, 0.22f, 0.12f, 0.16f, 0.08f)
                         },
@@ -273,23 +270,24 @@ fun FinanceScreen(viewModel: FinanceViewModel) {
 
                 BentoCard(modifier = Modifier.weight(0.95f)) {
                     Text("Canais Ativos", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                    Text("Débito · M-Pesa", color = LifeOsTheme.TextSecondary, fontSize = 11.sp)
+                    Text("Débito · M-Pesa", color = LifeOsTheme.TextSecondary, fontSize = 11.5.sp)
                     Spacer(modifier = Modifier.height(12.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         listOf(
-                            "🍔" to Color(0xFF1F1214),
-                            "🏠" to Color(0xFFF2F2F7),
-                            "📚" to Color(0xFF141418),
-                            "⚡" to Color(0xFFD91E2A)
-                        ).forEach { (emoji, bg) ->
+                            Icons.Rounded.Restaurant to LifeOsTheme.RedExpense,
+                            Icons.Rounded.HomeWork to LifeOsTheme.PurpleStudy,
+                            Icons.Rounded.MenuBook to LifeOsTheme.GreenHealth,
+                            Icons.Rounded.Bolt to LifeOsTheme.CyanFinance
+                        ).forEach { (icon, tint) ->
                             Box(
                                 modifier = Modifier
                                     .size(32.dp)
                                     .clip(RoundedCornerShape(10.dp))
-                                    .background(bg),
+                                    .background(tint.copy(alpha = 0.15f))
+                                    .border(1.dp, tint.copy(alpha = 0.32f), RoundedCornerShape(10.dp)),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(emoji, fontSize = 14.sp)
+                                Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(16.dp))
                             }
                         }
                     }
@@ -299,26 +297,52 @@ fun FinanceScreen(viewModel: FinanceViewModel) {
 
         // 4. Barra Relâmpago de 2 Segundos ("Almoço 38 débito" por texto ou voz)
         item {
-            BentoCard(borderColor = LifeOsTheme.CyanFinance.copy(alpha = 0.55f)) {
-                Text(
-                    text = "⚡ Lançamento em 2 Segundos (Texto ou Voz)",
-                    color = LifeOsTheme.CyanFinance,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp
+            BentoCard(
+                borderColor = LifeOsTheme.CyanFinance.copy(alpha = 0.48f),
+                glowAccent = LifeOsTheme.CyanFinance
+            ) {
+                EyebrowCapsule(
+                    text = "LANÇAMENTO NLP EM 2 SEGUNDOS",
+                    accent = LifeOsTheme.CyanFinance
                 )
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(10.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    OutlinedTextField(
-                        value = quickInput,
-                        onValueChange = { quickInput = it },
-                        placeholder = { Text("Ex: Almoço 38 débito", fontSize = 13.sp) },
-                        singleLine = true,
-                        modifier = Modifier.weight(1f)
-                    )
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(44.dp)
+                            .clip(CircleShape)
+                            .background(LifeOsTheme.SurfaceElevated)
+                            .border(1.dp, LifeOsTheme.BorderSubtle, CircleShape)
+                            .padding(horizontal = 14.dp),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        if (quickInput.isEmpty()) {
+                            Text(
+                                text = "Ex: Almoço 38 débito",
+                                color = LifeOsTheme.TextMuted,
+                                fontSize = 13.sp,
+                                maxLines = 1
+                            )
+                        }
+                        BasicTextField(
+                            value = quickInput,
+                            onValueChange = { quickInput = it },
+                            singleLine = true,
+                            cursorBrush = SolidColor(LifeOsTheme.CyanFinance),
+                            textStyle = TextStyle(
+                                color = Color.White,
+                                fontSize = 13.5.sp,
+                                fontWeight = FontWeight.Medium
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+
                     IconButton(
                         onClick = {
                             val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
@@ -333,11 +357,13 @@ fun FinanceScreen(viewModel: FinanceViewModel) {
                         },
                         modifier = Modifier
                             .size(44.dp)
-                            .clip(RoundedCornerShape(12.dp))
+                            .clip(CircleShape)
                             .background(LifeOsTheme.SurfaceElevated)
+                            .border(1.dp, LifeOsTheme.BorderSubtle, CircleShape)
                     ) {
                         Icon(Icons.Rounded.Mic, contentDescription = "Falar gasto", tint = LifeOsTheme.OrangeStreak)
                     }
+
                     IconButton(
                         onClick = {
                             if (quickInput.isNotBlank()) {
@@ -347,14 +373,14 @@ fun FinanceScreen(viewModel: FinanceViewModel) {
                         },
                         modifier = Modifier
                             .size(44.dp)
-                            .clip(RoundedCornerShape(12.dp))
+                            .clip(CircleShape)
                             .background(LifeOsTheme.CyanFinance)
                     ) {
                         Icon(Icons.Rounded.Bolt, contentDescription = "Registrar", tint = Color.Black)
                     }
                 }
                 state.quickFeedback?.let { msg ->
-                    Spacer(modifier = Modifier.height(6.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                     Text(msg, color = LifeOsTheme.GreenHealth, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
@@ -379,10 +405,11 @@ fun FinanceScreen(viewModel: FinanceViewModel) {
         // 5.2. Diagrama de Fluxo de Sankey Fluido (Pilar 6.8)
         item {
             val sk = state.sankeyBreakdown
-            BentoCard {
-                Text("DIAGRAMA DE FLUXO DE SANKEY FLUIDO", color = LifeOsTheme.CyanFinance, style = MaterialTheme.typography.labelSmall)
+            BentoCard(glowAccent = LifeOsTheme.CyanFinance) {
+                EyebrowCapsule(text = "DIAGRAMA DE SANKEY FLUIDO", accent = LifeOsTheme.CyanFinance)
+                Spacer(modifier = Modifier.height(4.dp))
                 Text("Ramificação da Renda Líquida", color = Color.White, fontWeight = FontWeight.Black, fontSize = 17.sp)
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(12.dp))
                 FluidSankeyCashflowChart(
                     netIncome = sk.netIncome,
                     investmentsAmount = sk.investmentsAmount,
@@ -395,14 +422,24 @@ fun FinanceScreen(viewModel: FinanceViewModel) {
 
         // 5.5. Matriz de Correlação Multivariada da IA (Pilar 6.10)
         item {
-            BentoCard(borderColor = LifeOsTheme.AmberFocus.copy(alpha = 0.50f)) {
+            BentoCard(
+                borderColor = LifeOsTheme.AmberFocus.copy(alpha = 0.50f),
+                glowAccent = LifeOsTheme.AmberFocus
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    EyebrowCapsule(
+                        text = "CORRELAÇÃO MULTIVARIADA IA",
+                        accent = LifeOsTheme.AmberFocus
+                    )
+                    LuxuryStatBadge(label = "r = -0.94", accent = LifeOsTheme.AmberFocus)
+                }
+                Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "🧠 MATRIZ DE CORRELAÇÃO MULTIVARIADA DA IA",
-                    color = LifeOsTheme.AmberFocus,
-                    style = MaterialTheme.typography.labelSmall
-                )
-                Text(
-                    text = "Sono & Treino × Gastos Impulsivos (r = -0.94)",
+                    text = "Sono & Treino × Gastos Impulsivos",
                     color = Color.White,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Black
@@ -423,46 +460,48 @@ fun FinanceScreen(viewModel: FinanceViewModel) {
             }
         }
 
-        // 6. Card Pixelado Hero "$123 today" (Referência 03 exata!)
+        // 6. Card Pixelado Hero "920 MZN hoje" (Referência 03)
         item {
             val prevTotal = ov.burnMatrixPoints.lastOrNull()?.previousMonthCumulative ?: 0.0
             val currTotal = ov.totalExpenseMonth
             val spendingLess = currTotal <= prevTotal || prevTotal == 0.0
 
-            BentoCard {
+            BentoCard(glowAccent = LifeOsTheme.OrangeStreak) {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+                    EyebrowCapsule(text = "ESCADA TÉRMICA DE QUEIMA DE CAIXA", accent = LifeOsTheme.OrangeStreak)
+                    Spacer(modifier = Modifier.height(10.dp))
                     Text(
-                        text = String.format(Locale.US, "%.0f %s", ov.spentToday, ov.currencyCode),
+                        text = LifeOsTheme.formatMoney(ov.spentToday, ov.currencyCode, decimals = 0),
                         color = Color.White,
-                        fontSize = 40.sp,
+                        fontSize = 38.sp,
                         fontWeight = FontWeight.Black
                     )
                     Text(
-                        text = "today",
+                        text = "gasto hoje",
                         color = LifeOsTheme.TextSecondary,
-                        fontSize = 15.sp
+                        fontSize = 13.5.sp
                     )
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = String.format(Locale.US, "Este mês: %.0f %s", currTotal, ov.currencyCode),
+                        text = "Este mês: ${LifeOsTheme.formatMoney(currTotal, ov.currencyCode, 0)}",
                         color = LifeOsTheme.OrangeStreak,
-                        fontSize = 11.sp,
+                        fontSize = 11.5.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = String.format(Locale.US, "Mês ant.: %.0f %s", prevTotal, ov.currencyCode),
+                        text = "Mês ant.: ${LifeOsTheme.formatMoney(prevTotal, ov.currencyCode, 0)}",
                         color = LifeOsTheme.TextMuted,
-                        fontSize = 11.sp
+                        fontSize = 11.5.sp
                     )
                 }
 
@@ -478,50 +517,76 @@ fun FinanceScreen(viewModel: FinanceViewModel) {
                 Spacer(modifier = Modifier.height(10.dp))
 
                 Text(
-                    text = if (spendingLess) "You're spending less than last month..." else "Ritmo acima do mês anterior — atenção ao teto.",
-                    color = LifeOsTheme.TextSecondary,
+                    text = if (spendingLess) "Ritmo abaixo do mês anterior · Margem de segurança preservada" else "Ritmo acima do mês anterior · Atenção ao teto variável",
+                    color = if (spendingLess) LifeOsTheme.GreenHealth else LifeOsTheme.AmberFocus,
                     fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.align(Alignment.CenterHorizontally)
                 )
             }
         }
 
-        // 7. Legenda Detalhada de Categorias + Transações Recentes
+        // 7. Transações Recentes com Orbes de Categoria e Moeda Tabular
         item {
             BentoCard {
-                Text("Transações & Categorias", color = Color.White, style = MaterialTheme.typography.titleMedium)
-                Spacer(modifier = Modifier.height(10.dp))
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("Livro-Razão Criptografado", color = Color.White, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
+                Spacer(modifier = Modifier.height(12.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
                     filteredTransactions.forEach { tx ->
                         val isIncome = tx.type == "INCOME"
+                        val txIcon = when {
+                            isIncome -> Icons.Rounded.TrendingUp
+                            tx.category.contains("Moradia", ignoreCase = true) -> Icons.Rounded.HomeWork
+                            tx.category.contains("Transp", ignoreCase = true) -> Icons.Rounded.DirectionsCar
+                            tx.category.contains("Livro", ignoreCase = true) -> Icons.Rounded.MenuBook
+                            else -> Icons.Rounded.Restaurant
+                        }
+                        val txTint = when {
+                            isIncome -> LifeOsTheme.GreenHealth
+                            tx.category.contains("Moradia", ignoreCase = true) -> LifeOsTheme.PurpleStudy
+                            tx.category.contains("Transp", ignoreCase = true) -> LifeOsTheme.CyanFinance
+                            else -> LifeOsTheme.AmberFocus
+                        }
+
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
+                                .clip(RoundedCornerShape(16.dp))
                                 .background(LifeOsTheme.SurfaceElevated)
-                                .padding(horizontal = 14.dp, vertical = 10.dp),
+                                .border(1.dp, LifeOsTheme.BorderSubtle, RoundedCornerShape(16.dp))
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(tx.category, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                                Text(
-                                    text = listOfNotNull(tx.note, tx.paymentMethod).joinToString(" · "),
-                                    color = LifeOsTheme.TextSecondary,
-                                    fontSize = 11.sp
+                            Row(
+                                modifier = Modifier.weight(1f),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                GlowingIconOrb(
+                                    icon = txIcon,
+                                    tint = txTint,
+                                    size = 36.dp,
+                                    iconSize = 17.dp
                                 )
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(tx.category, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.5.sp)
+                                    Text(
+                                        text = listOfNotNull(tx.note, tx.paymentMethod).joinToString(" · "),
+                                        color = LifeOsTheme.TextSecondary,
+                                        fontSize = 11.sp,
+                                        maxLines = 1
+                                    )
+                                }
                             }
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = String.format(
-                                    Locale.US,
-                                    "%s%.2f %s",
-                                    if (isIncome) "+" else "-",
-                                    tx.amount,
-                                    tx.currencyCode
-                                ),
+                                text = "${if (isIncome) "+" else "-"}${LifeOsTheme.formatMoney(tx.amount, tx.currencyCode, decimals = 0)}",
                                 color = if (isIncome) LifeOsTheme.GreenHealth else Color.White,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp
+                                fontWeight = FontWeight.ExtraBold,
+                                fontSize = 13.5.sp,
+                                maxLines = 1,
+                                softWrap = false
                             )
                         }
                     }
@@ -577,7 +642,7 @@ private fun ConfigureAntiCharityDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = LifeOsTheme.SurfaceDark,
-        title = { Text("⚖️ Contrato Anti-Charity", color = Color.White, fontWeight = FontWeight.Bold) },
+        title = { Text("Contrato Anti-Charity", color = Color.White, fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(

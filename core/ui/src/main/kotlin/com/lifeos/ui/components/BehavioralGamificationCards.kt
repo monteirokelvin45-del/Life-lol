@@ -13,7 +13,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Balance
+import androidx.compose.material.icons.rounded.GraphicEq
+import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
@@ -37,8 +42,8 @@ import kotlin.math.roundToInt
 
 /**
  * Pilar 5.4 — Ghost Multiplayer Assíncrono (Esquadrão Silencioso).
- * Renderiza auras de foco em tempo real de até 3 amigos em Zero-GC (drawWithCache),
- * sem salas de conversa ou feeds de distração.
+ * Renderiza auras de foco em tempo real de até 3 parceiros em Zero-GC (drawWithCache),
+ * com estética de radar bioluminescente sem salas de chat.
  */
 @Composable
 fun GhostSquadSilentAuraRow(
@@ -56,28 +61,41 @@ fun GhostSquadSilentAuraRow(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "👻 ESQUADRÃO SILENCIOSO · GHOST MULTIPLAYER",
-                    color = LifeOsTheme.CyanFinance,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Black
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                GlowingIconOrb(
+                    icon = Icons.Rounded.GraphicEq,
+                    tint = LifeOsTheme.CyanFinance,
+                    size = 38.dp,
+                    iconSize = 18.dp
                 )
-                Text(
-                    text = "Presença compartilhada sem chat ou distrações",
-                    color = LifeOsTheme.TextSecondary,
-                    fontSize = 12.sp
-                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Column {
+                    EyebrowCapsule(
+                        text = "GHOST MULTIPLAYER · ZERO CHAT",
+                        accent = LifeOsTheme.CyanFinance
+                    )
+                    Spacer(modifier = Modifier.height(3.dp))
+                    Text(
+                        text = "Esquadrão Silencioso em Foco",
+                        color = Color.White,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
             OutlinedButton(
                 onClick = onEditSquad,
-                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                shape = CircleShape,
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
             ) {
-                Text("Esquadrão", color = Color.White, fontSize = 11.sp)
+                Text("Esquadrão", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
             }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -91,38 +109,54 @@ fun GhostSquadSilentAuraRow(
                 Column(
                     modifier = Modifier
                         .weight(1f)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(LifeOsTheme.SurfaceElevated)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    auraColor.copy(alpha = if (active) 0.11f else 0.03f),
+                                    LifeOsTheme.SurfaceElevated
+                                )
+                            )
+                        )
                         .border(
                             width = 1.dp,
-                            color = if (active) auraColor.copy(alpha = 0.45f) else LifeOsTheme.BorderSubtle,
-                            shape = RoundedCornerShape(16.dp)
+                            color = if (active) auraColor.copy(alpha = 0.42f) else LifeOsTheme.BorderSubtle,
+                            shape = RoundedCornerShape(20.dp)
                         )
-                        .padding(vertical = 10.dp, horizontal = 8.dp),
+                        .padding(vertical = 12.dp, horizontal = 8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Spacer(
                             modifier = Modifier
-                                .size(50.dp)
+                                .size(52.dp)
                                 .drawWithCache {
                                     val center = Offset(size.width / 2f, size.height / 2f)
                                     val maxR = size.minDimension / 2f
                                     val auraBrush = Brush.radialGradient(
                                         colors = listOf(
-                                            auraColor.copy(alpha = if (active) 0.55f else 0.20f),
-                                            auraColor.copy(alpha = 0.08f),
+                                            auraColor.copy(alpha = if (active) 0.60f else 0.18f),
+                                            auraColor.copy(alpha = 0.10f),
                                             Color.Transparent
                                         ),
                                         center = center,
                                         radius = maxR
                                     )
                                     val ringStroke = Stroke(width = 1.8.dp.toPx())
+                                    val outerHaloStroke = Stroke(width = 1.dp.toPx())
                                     onDrawBehind {
                                         drawCircle(brush = auraBrush, radius = maxR, center = center)
+                                        if (active) {
+                                            drawCircle(
+                                                color = auraColor.copy(alpha = 0.28f),
+                                                radius = maxR * 0.86f,
+                                                center = center,
+                                                style = outerHaloStroke
+                                            )
+                                        }
                                         drawCircle(
-                                            color = auraColor.copy(alpha = if (active) 0.9f else 0.35f),
-                                            radius = maxR * 0.58f,
+                                            color = auraColor.copy(alpha = if (active) 0.95f else 0.35f),
+                                            radius = maxR * 0.56f,
                                             center = center,
                                             style = ringStroke
                                         )
@@ -132,16 +166,16 @@ fun GhostSquadSilentAuraRow(
                         Text(
                             text = codenames[idx].take(2).uppercase(Locale.ROOT),
                             color = Color.White,
-                            fontSize = 11.sp,
+                            fontSize = 11.5.sp,
                             fontWeight = FontWeight.Black
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(5.dp))
                     Text(
                         text = codenames[idx],
                         color = Color.White,
-                        fontSize = 12.sp,
+                        fontSize = 12.5.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1
                     )
@@ -149,13 +183,16 @@ fun GhostSquadSilentAuraRow(
                         text = domainLabels.getOrElse(idx) { "Foco" },
                         color = auraColor,
                         fontSize = 10.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Bold,
                         maxLines = 1
                     )
+                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = if (active) "● ${mins}m em foco" else "${mins}m hoje",
-                        color = LifeOsTheme.TextSecondary,
-                        fontSize = 10.sp
+                        text = if (active) "● ${mins}m ativo" else "${mins}m hoje",
+                        color = if (active) LifeOsTheme.TextPrimary else LifeOsTheme.TextMuted,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1
                     )
                 }
             }
@@ -164,7 +201,7 @@ fun GhostSquadSilentAuraRow(
 }
 
 /**
- * Pilar 5.3 — Escudo Anti-Falha (Streak Freeze Científico).
+ * Pilar 5.3 — Escudo Anti-Falha (Streak Freeze Científico) com cristais de energia.
  */
 @Composable
 fun StreakFreezeShieldBanner(
@@ -178,6 +215,7 @@ fun StreakFreezeShieldBanner(
 ) {
     BentoCard(
         borderColor = if (isFreezeActiveToday) LifeOsTheme.CyanFinance else LifeOsTheme.BorderSubtle,
+        glowAccent = LifeOsTheme.CyanFinance,
         modifier = modifier
     ) {
         Row(
@@ -185,29 +223,57 @@ fun StreakFreezeShieldBanner(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "🛡️ ESCUDO ANTI-FALHA · STREAK FREEZE CIENTÍFICO",
-                    color = LifeOsTheme.CyanFinance,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Black
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                GlowingIconOrb(
+                    icon = Icons.Rounded.Shield,
+                    tint = LifeOsTheme.CyanFinance,
+                    size = 42.dp,
+                    iconSize = 20.dp
                 )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = if (isFreezeActiveToday) {
-                        "Escudo Ativo Hoje · Sequência e Ebbinghaus protegidos!"
-                    } else {
-                        "$availableCredits de $maxCredits créditos de repouso acumulados"
-                    },
-                    color = Color.White,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "Próximo crédito: $cleanCheckInsInCycle/$requiredPerShield check-ins consistentes",
-                    color = LifeOsTheme.TextSecondary,
-                    fontSize = 11.sp
-                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    EyebrowCapsule(
+                        text = "STREAK FREEZE CIENTÍFICO",
+                        accent = LifeOsTheme.CyanFinance
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = if (isFreezeActiveToday) {
+                            "Escudo Ativo Hoje · Sequência Protegida"
+                        } else {
+                            "$availableCredits de $maxCredits Cristais de Repouso"
+                        },
+                        color = Color.White,
+                        fontSize = 14.5.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(5.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        for (c in 0 until maxCredits.coerceAtLeast(3)) {
+                            val charged = c < availableCredits
+                            Box(
+                                modifier = Modifier
+                                    .size(width = 18.dp, height = 6.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        if (charged) LifeOsTheme.CyanFinance else LifeOsTheme.SurfaceElevated
+                                    )
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "$cleanCheckInsInCycle/$requiredPerShield check-ins",
+                            color = LifeOsTheme.TextSecondary,
+                            fontSize = 10.5.sp
+                        )
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.width(8.dp))
@@ -215,22 +281,25 @@ fun StreakFreezeShieldBanner(
             Button(
                 onClick = onActivateFreeze,
                 enabled = !isFreezeActiveToday && availableCredits > 0,
+                shape = CircleShape,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = LifeOsTheme.CyanFinance,
                     disabledContainerColor = LifeOsTheme.SurfaceElevated
                 ),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
             ) {
                 Text(
-                    text = if (isFreezeActiveToday) "Protegido ✓" else "Usar Escudo",
+                    text = if (isFreezeActiveToday) "Ativo ✓" else "Congelar",
                     color = if (isFreezeActiveToday) LifeOsTheme.GreenHealth else Color.Black,
                     fontSize = 12.sp,
-                    fontWeight = FontWeight.Black
+                    fontWeight = FontWeight.Black,
+                    maxLines = 1,
+                    softWrap = false
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(12.dp))
         LinearProgressIndicator(
             progress = { (cleanCheckInsInCycle.toFloat() / requiredPerShield.coerceAtLeast(1)).coerceIn(0.06f, 1f) },
             color = LifeOsTheme.CyanFinance,
@@ -244,7 +313,7 @@ fun StreakFreezeShieldBanner(
 }
 
 /**
- * Pilar 5.5 — Contratos de Compromisso Anti-Charity.
+ * Pilar 5.5 — Contratos de Compromisso Anti-Charity com formatação monetária de luxo.
  */
 @Composable
 fun AntiCharityCommitmentBanner(
@@ -267,6 +336,7 @@ fun AntiCharityCommitmentBanner(
 
     BentoCard(
         borderColor = accent.copy(alpha = 0.55f),
+        glowAccent = LifeOsTheme.AmberFocus,
         modifier = modifier
     ) {
         Row(
@@ -274,36 +344,41 @@ fun AntiCharityCommitmentBanner(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "⚖️ CONTRATO DE COMPROMISSO ANTI-CHARITY",
-                    color = LifeOsTheme.AmberFocus,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Black
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                GlowingIconOrb(
+                    icon = Icons.Rounded.Balance,
+                    tint = LifeOsTheme.AmberFocus,
+                    size = 40.dp,
+                    iconSize = 19.dp
                 )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = String.format(
-                        Locale.US,
-                        "Caução: %.0f %s → %s",
-                        stakeAmount,
-                        currencyCode,
-                        institutionName
-                    ),
-                    color = Color.White,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    EyebrowCapsule(
+                        text = "CONTRATO ANTI-CHARITY",
+                        accent = LifeOsTheme.AmberFocus
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "${LifeOsTheme.formatMoney(stakeAmount, currencyCode, decimals = 0)} → $institutionName",
+                        color = Color.White,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
             OutlinedButton(
                 onClick = onConfigureContract,
-                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                shape = CircleShape,
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
             ) {
-                Text("Caução", color = Color.White, fontSize = 11.sp)
+                Text("Caução", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
             }
         }
 
-        Spacer(modifier = Modifier.height(6.dp))
+        Spacer(modifier = Modifier.height(8.dp))
         Text(statusSummary, color = LifeOsTheme.TextSecondary, fontSize = 12.sp)
 
         Spacer(modifier = Modifier.height(10.dp))

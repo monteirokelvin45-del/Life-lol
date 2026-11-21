@@ -5,6 +5,7 @@ package com.lifeos.app.features.study
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -17,11 +18,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.CameraAlt
 import androidx.compose.material.icons.rounded.FormatQuote
+import androidx.compose.material.icons.rounded.MenuBook
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material3.AlertDialog
@@ -52,7 +55,10 @@ import com.lifeos.core.domain.algorithm.EbbinghausScheduler
 import com.lifeos.core.domain.model.BookDomainModel
 import com.lifeos.ui.components.BentoCard
 import com.lifeos.ui.components.EbbinghausSawtoothCurveChart
+import com.lifeos.ui.components.EyebrowCapsule
+import com.lifeos.ui.components.GlowingIconOrb
 import com.lifeos.ui.components.KnowledgeBurndownConeChart
+import com.lifeos.ui.components.LuxuryStatBadge
 import com.lifeos.ui.components.SmoothMetricSplineChart
 import com.lifeos.ui.theme.LifeOsTheme
 import java.util.Locale
@@ -74,7 +80,7 @@ fun StudyScreen(viewModel: StudyViewModel) {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(LifeOsTheme.PureBlack),
+            .background(Color.Transparent),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
@@ -85,11 +91,11 @@ fun StudyScreen(viewModel: StudyViewModel) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "07:00 · REVISÃO ESPAÇADA & LEITURA ATIVA",
-                        color = LifeOsTheme.PurpleStudy,
-                        style = MaterialTheme.typography.labelSmall
+                    EyebrowCapsule(
+                        text = "07:00 · ENGENHARIA MNEMÔNICA",
+                        accent = LifeOsTheme.PurpleStudy
                     )
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = "Estudos & Biblioteca",
                         color = Color.White,
@@ -100,46 +106,45 @@ fun StudyScreen(viewModel: StudyViewModel) {
                 Spacer(modifier = Modifier.width(8.dp))
                 Button(
                     onClick = { showAddTopicDialog = true },
+                    shape = CircleShape,
                     colors = ButtonDefaults.buttonColors(containerColor = LifeOsTheme.PurpleStudy),
-                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 9.dp)
                 ) {
-                    Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(17.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Tópico", maxLines = 1, softWrap = false, fontWeight = FontWeight.Bold)
+                    Text("Tópico", maxLines = 1, softWrap = false, fontWeight = FontWeight.Bold, fontSize = 12.5.sp)
                 }
             }
         }
 
-        // 0.5. Analytics · Curva Suave de Retenção & Qualidade Cognitiva (Referência 02)
+        // 0.5. Analytics · Curva Suave de Retenção & Haptic Scrubber
         item {
             val avgRetention = if (state.allTopics.isNotEmpty()) {
                 state.allTopics.map { it.estimatedRetentionPercent }.average().toInt()
             } else {
-                86
+                88
             }
-            BentoCard {
+            BentoCard(glowAccent = LifeOsTheme.PurpleStudy) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
-                        Text("Curva Spline · Haptic Scrubber", color = LifeOsTheme.TextSecondary, fontSize = 11.sp)
+                    Column(modifier = Modifier.weight(1f)) {
+                        EyebrowCapsule(text = "SPLINE BÉZIER · HAPTIC SCRUBBER", accent = LifeOsTheme.GreenHealth)
+                        Spacer(modifier = Modifier.height(4.dp))
                         Row(verticalAlignment = Alignment.Bottom) {
                             Text("$avgRetention%", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Black)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Arraste para tátil ↑", color = LifeOsTheme.GreenHealth, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                            Text("Retenção média", color = LifeOsTheme.TextSecondary, fontSize = 12.sp, modifier = Modifier.padding(bottom = 4.dp))
                         }
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text("—● Atual", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                        Text("— Anterior", color = LifeOsTheme.TextMuted, fontSize = 11.sp)
-                    }
+                    LuxuryStatBadge(label = "Arraste Tátil", accent = LifeOsTheme.GreenHealth)
                 }
                 Spacer(modifier = Modifier.height(10.dp))
                 SmoothMetricSplineChart(
-                    currentPoints = listOf(62f, 88f, 74f, 48f, avgRetention.toFloat()),
-                    previousPoints = listOf(50f, 54f, 68f, 73f, 78f),
+                    currentPoints = listOf(64f, 88f, 76f, 82f, avgRetention.toFloat()),
+                    previousPoints = listOf(52f, 58f, 68f, 73f, 79f),
                     lineColor = Color.White
                 )
             }
@@ -147,20 +152,21 @@ fun StudyScreen(viewModel: StudyViewModel) {
 
         // 0.7. Curva Dente-de-Serra de Ebbinghaus (Pilar 6.9)
         item {
-            val highestStage = state.allTopics.maxOfOrNull { it.stage } ?: 2
-            BentoCard {
+            val highestStage = state.allTopics.maxOfOrNull { it.stage } ?: 3
+            BentoCard(glowAccent = LifeOsTheme.PurpleStudy) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
-                        Text("CURVA DENTE-DE-SERRA DE EBBINGHAUS", color = LifeOsTheme.PurpleStudy, style = MaterialTheme.typography.labelSmall)
-                        Text("Saltos de Restauração a 100%", color = Color.White, fontWeight = FontWeight.Black, fontSize = 16.sp)
+                    Column(modifier = Modifier.weight(1f)) {
+                        EyebrowCapsule(text = "CURVA DENTE-DE-SERRA DE EBBINGHAUS", accent = LifeOsTheme.PurpleStudy)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text("Restauração Espaçada a 100%", color = Color.White, fontWeight = FontWeight.Black, fontSize = 16.sp)
                     }
-                    Text("-- Sem revisão", color = LifeOsTheme.RedExpense, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                    LuxuryStatBadge(label = "-- Sem revisão", accent = LifeOsTheme.RedExpense)
                 }
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(10.dp))
                 EbbinghausSawtoothCurveChart(activeStageIndex = highestStage)
             }
         }
@@ -168,24 +174,20 @@ fun StudyScreen(viewModel: StudyViewModel) {
         // 0.9. Burndown de Conhecimento com Cone de Incerteza (Pilar 6.13)
         item {
             val bd = state.burndownProjection
-            BentoCard {
+            BentoCard(glowAccent = LifeOsTheme.CyanFinance) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
-                        Text("BURNDOWN · CONE DE INCERTEZA", color = LifeOsTheme.CyanFinance, style = MaterialTheme.typography.labelSmall)
+                    Column(modifier = Modifier.weight(1f)) {
+                        EyebrowCapsule(text = "BURNDOWN · CONE DE INCERTEZA", accent = LifeOsTheme.CyanFinance)
+                        Spacer(modifier = Modifier.height(4.dp))
                         Text("${bd.remainingUnitsToday} de ${bd.totalTargetUnits} pág. restantes", color = Color.White, fontWeight = FontWeight.Black, fontSize = 16.sp)
                     }
-                    Text(
-                        text = "${bd.daysOptimistic}d – ${bd.daysConservative}d",
-                        color = LifeOsTheme.GreenHealth,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    LuxuryStatBadge(label = "${bd.daysOptimistic}d – ${bd.daysConservative}d", accent = LifeOsTheme.GreenHealth)
                 }
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(10.dp))
                 KnowledgeBurndownConeChart(
                     historicalRemaining = bd.historicalRemaining,
                     optimisticCone = bd.optimisticConeRemaining,
@@ -197,18 +199,25 @@ fun StudyScreen(viewModel: StudyViewModel) {
 
         // 1. Fila de Revisões Ebbinghaus [1, 3, 7, 16, 30 dias]
         item {
-            BentoCard(borderColor = LifeOsTheme.PurpleStudy.copy(alpha = 0.5f)) {
-                Text(
-                    text = "Pendentes Hoje · Curva [1, 3, 7, 16, 30 dias]",
-                    color = LifeOsTheme.PurpleStudy,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp
-                )
-                Spacer(modifier = Modifier.height(8.dp))
+            BentoCard(borderColor = LifeOsTheme.PurpleStudy.copy(alpha = 0.5f), glowAccent = LifeOsTheme.PurpleStudy) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Fila Ebbinghaus de Hoje",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.5.sp
+                    )
+                    LuxuryStatBadge(label = "${state.dueTopics.size} pendentes", accent = LifeOsTheme.PurpleStudy)
+                }
+                Spacer(modifier = Modifier.height(10.dp))
 
                 if (state.dueTopics.isEmpty()) {
                     Text(
-                        text = "Zero pendências! Próximos alarmes exatos programados às 07:00.",
+                        text = "Memória consolidada! Próximos alarmes exatos agendados para as 07:00.",
                         color = LifeOsTheme.TextSecondary,
                         fontSize = 13.sp
                     )
@@ -219,35 +228,39 @@ fun StudyScreen(viewModel: StudyViewModel) {
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clip(RoundedCornerShape(14.dp))
+                                    .clip(RoundedCornerShape(18.dp))
                                     .background(LifeOsTheme.SurfaceElevated)
+                                    .border(1.dp, LifeOsTheme.BorderSubtle, RoundedCornerShape(18.dp))
                                     .padding(14.dp)
                             ) {
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text(topic.subject, color = LifeOsTheme.PurpleStudy, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    Text(topic.subject, color = LifeOsTheme.PurpleStudy, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
                                     Text(
-                                        text = "Estágio ${topic.stage + 1}/5 (${interval}d) · Retenção ${topic.estimatedRetentionPercent}%",
+                                        text = "Estágio ${topic.stage + 1}/5 · +${interval}d · ${topic.estimatedRetentionPercent}%",
                                         color = LifeOsTheme.TextSecondary,
                                         fontSize = 11.sp
                                     )
                                 }
                                 Spacer(modifier = Modifier.height(4.dp))
-                                Text(topic.topic, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                                Text(topic.topic, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                                 Spacer(modifier = Modifier.height(10.dp))
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Button(
                                         onClick = { viewModel.onIntent(StudyIntent.ReviewTopic(topic.id, rememberedWell = true)) },
+                                        shape = CircleShape,
                                         colors = ButtonDefaults.buttonColors(containerColor = LifeOsTheme.GreenHealth)
                                     ) {
-                                        Text("Dominei (+Avançar)", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                        Text("Dominei · Avançar", color = Color.Black, fontWeight = FontWeight.Black, fontSize = 12.sp)
                                     }
                                     OutlinedButton(
-                                        onClick = { viewModel.onIntent(StudyIntent.ReviewTopic(topic.id, rememberedWell = false)) }
+                                        onClick = { viewModel.onIntent(StudyIntent.ReviewTopic(topic.id, rememberedWell = false)) },
+                                        shape = CircleShape
                                     ) {
-                                        Text("Esqueci (Reset 1d)", color = LifeOsTheme.RedExpense, fontSize = 12.sp)
+                                        Text("Reset 1d", color = LifeOsTheme.RedExpense, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                     }
                                 }
                             }
@@ -267,20 +280,22 @@ fun StudyScreen(viewModel: StudyViewModel) {
                 Text(
                     text = "Modo Leitura Ativa",
                     color = Color.White,
-                    style = MaterialTheme.typography.titleMedium
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Black
                 )
                 OutlinedButton(
                     onClick = { runCatching { cameraOcrLauncher.launch(null) } },
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                    shape = CircleShape,
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.CameraAlt,
                         contentDescription = "Escanear Frase OCR",
                         tint = LifeOsTheme.GreenHealth,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(15.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Escanear Frase (OCR)", color = Color.White, fontSize = 12.sp)
+                    Text("Escanear OCR", color = Color.White, fontSize = 11.5.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                 }
             }
         }
@@ -292,30 +307,39 @@ fun StudyScreen(viewModel: StudyViewModel) {
             val secs = state.readingTimer.elapsedSeconds % 60
 
             BentoCard(
-                borderColor = if (isTimerActiveForThisBook) LifeOsTheme.GreenHealth else LifeOsTheme.BorderSubtle
+                borderColor = if (isTimerActiveForThisBook) LifeOsTheme.GreenHealth else LifeOsTheme.BorderSubtle,
+                glowAccent = LifeOsTheme.GreenHealth
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(book.title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 17.sp)
-                        Text(book.author, color = LifeOsTheme.TextSecondary, fontSize = 12.sp)
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                        GlowingIconOrb(
+                            icon = Icons.Rounded.MenuBook,
+                            tint = LifeOsTheme.GreenHealth,
+                            size = 42.dp,
+                            iconSize = 20.dp
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(book.title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                            Text(book.author, color = LifeOsTheme.TextSecondary, fontSize = 12.sp)
+                        }
                     }
-                    Text(
-                        text = "${book.currentPage}/${book.totalPages} pág",
-                        color = LifeOsTheme.GreenHealth,
-                        fontWeight = FontWeight.Bold
+                    LuxuryStatBadge(
+                        label = "${book.currentPage}/${book.totalPages} pág",
+                        accent = LifeOsTheme.GreenHealth
                     )
                 }
 
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(book.morningTargetRangeLabel, color = Color.White, fontSize = 12.sp)
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(book.morningTargetRangeLabel, color = Color.White, fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold)
 
                 Spacer(modifier = Modifier.height(8.dp))
                 LinearProgressIndicator(
-                    progress = { book.progressFraction },
+                    progress = { book.progressFraction.coerceAtLeast(0.06f) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(8.dp)
@@ -339,29 +363,31 @@ fun StudyScreen(viewModel: StudyViewModel) {
                 ) {
                     if (isTimerActiveForThisBook) {
                         Text(
-                            text = String.format(Locale.US, "⏱ Lendo agora: %02d:%02d", mins, secs),
+                            text = String.format(Locale.US, "Lendo agora · %02d:%02d", mins, secs),
                             color = LifeOsTheme.GreenHealth,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp
+                            fontSize = 14.sp
                         )
                         Button(
                             onClick = { stoppingBook = book },
+                            shape = CircleShape,
                             colors = ButtonDefaults.buttonColors(containerColor = LifeOsTheme.OrangeStreak)
                         ) {
                             Icon(Icons.Rounded.Stop, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Parar & Informar Pág.", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            Text("Salvar Pág.", fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         }
                     } else {
                         Button(
                             onClick = { viewModel.onIntent(StudyIntent.StartReadingTimer(book.id)) },
+                            shape = CircleShape,
                             colors = ButtonDefaults.buttonColors(containerColor = LifeOsTheme.GreenHealth)
                         ) {
                             Icon(Icons.Rounded.PlayArrow, contentDescription = null, tint = Color.Black, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Play Leitura Ativa", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            Text("Iniciar Leitura", color = Color.Black, fontWeight = FontWeight.Black, fontSize = 12.sp)
                         }
-                        OutlinedButton(onClick = { stoppingBook = book }) {
+                        OutlinedButton(onClick = { stoppingBook = book }, shape = CircleShape) {
                             Text("+ Pág. Manual", color = Color.White, fontSize = 12.sp)
                         }
                     }
@@ -373,14 +399,19 @@ fun StudyScreen(viewModel: StudyViewModel) {
         item {
             BentoCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.FormatQuote, contentDescription = null, tint = LifeOsTheme.PurpleStudy)
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Diário de Frases Capturadas (OCR)", color = Color.White, style = MaterialTheme.typography.titleMedium)
+                    GlowingIconOrb(
+                        icon = Icons.Rounded.FormatQuote,
+                        tint = LifeOsTheme.PurpleStudy,
+                        size = 36.dp,
+                        iconSize = 18.dp
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text("Diário de Frases Capturadas · ML Kit OCR", color = Color.White, style = MaterialTheme.typography.titleMedium)
                 }
                 Spacer(modifier = Modifier.height(10.dp))
                 if (state.quotes.isEmpty()) {
                     Text(
-                        text = "Aponte a câmera para uma página do livro físico para extrair e guardar trechos marcantes.",
+                        text = "Aponte a câmera para uma página física para extrair citações instantaneamente on-device.",
                         color = LifeOsTheme.TextSecondary,
                         fontSize = 12.sp
                     )
@@ -390,22 +421,23 @@ fun StudyScreen(viewModel: StudyViewModel) {
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clip(RoundedCornerShape(12.dp))
+                                    .clip(RoundedCornerShape(16.dp))
                                     .background(LifeOsTheme.SurfaceElevated)
-                                    .padding(12.dp)
+                                    .border(1.dp, LifeOsTheme.BorderSubtle, RoundedCornerShape(16.dp))
+                                    .padding(14.dp)
                             ) {
                                 Text(
                                     text = "“${q.quoteText}”",
                                     color = Color.White,
                                     fontStyle = FontStyle.Italic,
-                                    fontSize = 13.sp
+                                    fontSize = 13.5.sp
                                 )
-                                Spacer(modifier = Modifier.height(4.dp))
+                                Spacer(modifier = Modifier.height(6.dp))
                                 Text(
                                     text = "${q.bookTitle} · Pág. ${q.pageNumber} · ${q.formattedDate}",
                                     color = LifeOsTheme.PurpleStudy,
                                     fontSize = 11.sp,
-                                    fontWeight = FontWeight.SemiBold
+                                    fontWeight = FontWeight.Bold
                                 )
                             }
                         }

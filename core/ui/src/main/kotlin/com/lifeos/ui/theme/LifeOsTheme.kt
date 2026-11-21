@@ -8,27 +8,46 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import java.text.DecimalFormat
+import java.text.DecimalFormatSymbols
+import java.util.Locale
 
 /**
- * Tokens visuais OLED 120 FPS do Life OS (Pilar 8.1 + Referências 01..10).
+ * Design System OLED de Luxo 120 FPS do Life OS (Conselho de 45 Especialistas).
+ * - PureBlack (#000000) desliga fisicamente os subpixels em telas AMOLED/OLED.
+ * - Superfícies em Obsidiana Fria com iluminação especular de topo (Linear / Apple Watch Ultra).
+ * - Tipografia editorial com numerais tabulares ("tnum") e tracking negativo em displays.
  */
 object LifeOsTheme {
-    val PureBlack = Color(0xFF000000)       // OLED Background
-    val SurfaceDark = Color(0xFF0D0D0D)     // Bento Grid Card Base
-    val SurfaceElevated = Color(0xFF141414) // Containers internos e células vazias
-    val BorderSubtle = Color(0xFF1F1F1F)    // Bordas de 1dp
+    val PureBlack = Color(0xFF000000)          // OLED Absoluto
+    val SurfaceDark = Color(0xFF0B0C10)        // Base Bento Obsidiana Profunda
+    val SurfaceGlassTop = Color(0xFF14161D)    // Luz especular superior sutil
+    val SurfaceElevated = Color(0xFF161821)    // Pílulas internas e controles
+    val BorderSubtle = Color(0xFF222530)       // Hairline 1dp
+    val BorderSpecular = Color(0xFF343949)     // Reflexo superior de vidro
 
-    // Cores Funcionais de Domínio
-    val GreenHealth = Color(0xFF10E05B)     // Hábitos e Saúde
-    val OrangeStreak = Color(0xFFFF4800)    // Streaks de dopamina e fogo
-    val PurpleStudy = Color(0xFF8B5CF6)     // Estudos e Ebbinghaus
-    val CyanFinance = Color(0xFF00E5FF)     // Entradas financeiras / Saldo
-    val RedExpense = Color(0xFFFF2A4B)      // Despesas
-    val AmberFocus = Color(0xFFFFB800)      // Metas diárias e destaques
+    // Paleta Bioluminescente Calibrada para Contraste OLED
+    val GreenHealth = Color(0xFF12E86B)        // Saúde, Fisiologia & Confirmação
+    val OrangeStreak = Color(0xFFFF5514)       // Dopamina, Fogo & Streaks
+    val PurpleStudy = Color(0xFF9B6BFF)        // Cognição, IA & Ebbinghaus
+    val CyanFinance = Color(0xFF00E5FF)        // Liquidez, Escudos & Cronobiologia
+    val RedExpense = Color(0xFFFF3358)         // Vazamentos, Corte Cafeína & Fadiga
+    val AmberFocus = Color(0xFFFFBE1A)         // Destaques Dourados & Regressão
 
-    val TextPrimary = Color(0xFFFFFFFF)
-    val TextSecondary = Color(0xFF8E8E93)
-    val TextMuted = Color(0xFF52525B)
+    val TextPrimary = Color(0xFFF8FAFC)
+    val TextSecondary = Color(0xFF9499A6)
+    val TextMuted = Color(0xFF5A6070)
+
+    private val currencyGroupingSymbols = DecimalFormatSymbols(Locale.US).apply {
+        groupingSeparator = '.'
+        decimalSeparator = ','
+    }
+
+    fun formatMoney(amount: Double, currencyCode: String, decimals: Int = 0): String {
+        val pattern = if (decimals > 0) "#,##0.00" else "#,##0"
+        val formatted = DecimalFormat(pattern, currencyGroupingSymbols).format(amount)
+        return "$formatted $currencyCode"
+    }
 
     fun parseHexColorOrDefault(hex: String, fallback: Color = GreenHealth): Color {
         return runCatching {
@@ -60,27 +79,38 @@ private val LifeOsDarkColors = darkColorScheme(
 
 private val LifeOsTypography = Typography(
     headlineLarge = TextStyle(
-        fontSize = 30.sp,
+        fontSize = 29.sp,
+        lineHeight = 34.sp,
         fontWeight = FontWeight.Black,
-        letterSpacing = (-0.5).sp
+        letterSpacing = (-0.9).sp,
+        fontFeatureSettings = "tnum"
     ),
     headlineMedium = TextStyle(
-        fontSize = 22.sp,
-        fontWeight = FontWeight.Bold,
-        letterSpacing = (-0.3).sp
+        fontSize = 23.sp,
+        lineHeight = 28.sp,
+        fontWeight = FontWeight.ExtraBold,
+        letterSpacing = (-0.6).sp,
+        fontFeatureSettings = "tnum"
     ),
     titleMedium = TextStyle(
         fontSize = 16.sp,
-        fontWeight = FontWeight.SemiBold
+        lineHeight = 21.sp,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = (-0.2).sp,
+        fontFeatureSettings = "tnum"
     ),
     bodyMedium = TextStyle(
-        fontSize = 14.sp,
-        fontWeight = FontWeight.Normal
+        fontSize = 13.5.sp,
+        lineHeight = 19.sp,
+        fontWeight = FontWeight.Normal,
+        fontFeatureSettings = "tnum"
     ),
     labelSmall = TextStyle(
-        fontSize = 11.sp,
-        fontWeight = FontWeight.SemiBold,
-        letterSpacing = 0.6.sp
+        fontSize = 10.5.sp,
+        lineHeight = 14.sp,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = 1.1.sp,
+        fontFeatureSettings = "tnum"
     )
 )
 

@@ -32,7 +32,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.lifeos.ui.theme.LifeOsTheme
-import java.util.Locale
 import kotlin.math.cos
 import kotlin.math.pow
 import kotlin.math.sin
@@ -58,9 +57,9 @@ fun CompoundEffectFlameChart(
         Spacer(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(168.dp)
+                .height(170.dp)
                 .drawWithCache {
-                    val padTop = 28.dp.toPx()
+                    val padTop = 30.dp.toPx()
                     val padBottom = 14.dp.toPx()
                     val padRight = 22.dp.toPx()
                     val usableW = (size.width - padRight).coerceAtLeast(20f)
@@ -96,8 +95,8 @@ fun CompoundEffectFlameChart(
                     // Construção vetorial da Chama 3D multicamada no Dia 100
                     val fx = tipPt.x
                     val fy = tipPt.y
-                    val fw = 13.dp.toPx()
-                    val fh = 24.dp.toPx()
+                    val fw = 13.5.dp.toPx()
+                    val fh = 25.dp.toPx()
 
                     outerFlamePath.reset()
                     outerFlamePath.moveTo(fx, fy - fh)
@@ -124,7 +123,7 @@ fun CompoundEffectFlameChart(
                     val areaBrush = Brush.verticalGradient(
                         colors = listOf(
                             LifeOsTheme.OrangeStreak.copy(alpha = 0.38f),
-                            LifeOsTheme.AmberFocus.copy(alpha = 0.06f),
+                            LifeOsTheme.AmberFocus.copy(alpha = 0.08f),
                             Color.Transparent
                         )
                     )
@@ -137,11 +136,11 @@ fun CompoundEffectFlameChart(
                     val midFlameBrush = Brush.verticalGradient(
                         colors = listOf(LifeOsTheme.AmberFocus, LifeOsTheme.OrangeStreak)
                     )
-                    val strokeCurve = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
+                    val strokeCurve = Stroke(width = 3.2.dp.toPx(), cap = StrokeCap.Round)
                     val dashGuide = PathEffect.dashPathEffect(floatArrayOf(5f, 5f), 0f)
                     val oneDp = 1.dp.toPx()
                     val nodeR = 4.5.dp.toPx()
-                    val userHaloR = 9.dp.toPx()
+                    val userHaloR = 10.dp.toPx()
 
                     onDrawBehind {
                         for (row in 0..3) {
@@ -175,7 +174,7 @@ fun CompoundEffectFlameChart(
                         // Chama 3D no ápice do Dia 100
                         drawCircle(
                             color = LifeOsTheme.OrangeStreak.copy(alpha = 0.24f),
-                            radius = 20.dp.toPx(),
+                            radius = 22.dp.toPx(),
                             center = Offset(fx, fy - 4.dp.toPx())
                         )
                         drawPath(path = outerFlamePath, brush = outerFlameBrush)
@@ -189,10 +188,10 @@ fun CompoundEffectFlameChart(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("Dia 1 (1.0x)", color = LifeOsTheme.TextMuted, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+            Text("Dia 1 · 1.0x", color = LifeOsTheme.TextMuted, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
             Text("Dia 7", color = LifeOsTheme.TextMuted, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
-            Text("Dia 30 (1.7x)", color = LifeOsTheme.AmberFocus, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-            Text("🔥 Dia 100 (6.0x)", color = LifeOsTheme.OrangeStreak, fontSize = 10.sp, fontWeight = FontWeight.Black)
+            Text("Dia 30 · 1.7x", color = LifeOsTheme.AmberFocus, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            Text("◆ Dia 100 · 6.0x", color = LifeOsTheme.OrangeStreak, fontSize = 10.sp, fontWeight = FontWeight.Black)
         }
     }
 }
@@ -239,7 +238,7 @@ fun ConcentricFocusMacroRings(
                             val arcSize = Size(radius * 2f, radius * 2f)
 
                             drawArc(
-                                color = ringColor.copy(alpha = 0.16f),
+                                color = ringColor.copy(alpha = 0.14f),
                                 startAngle = 0f,
                                 sweepAngle = 360f,
                                 useCenter = false,
@@ -265,8 +264,8 @@ fun ConcentricFocusMacroRings(
                                 y = center.y + (sin(endRad) * radius).toFloat()
                             )
                             drawCircle(
-                                color = Color.White.copy(alpha = 0.85f),
-                                radius = strokeW * 0.24f,
+                                color = Color.White.copy(alpha = 0.90f),
+                                radius = strokeW * 0.25f,
                                 center = tipCenter
                             )
                         }
@@ -277,7 +276,7 @@ fun ConcentricFocusMacroRings(
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             val avgPct = (((animOuter + animMid + animInner) / 3f) * 100f).toInt()
             Text("$avgPct%", color = Color.White, fontWeight = FontWeight.Black, fontSize = 16.sp)
-            Text("RINGS", color = LifeOsTheme.TextMuted, fontWeight = FontWeight.Bold, fontSize = 8.sp)
+            Text("RINGS", color = LifeOsTheme.TextMuted, fontWeight = FontWeight.ExtraBold, fontSize = 8.sp, letterSpacing = 1.sp)
         }
     }
 }
@@ -311,7 +310,6 @@ fun ProgressiveOverloadRegressionChart(
                     val gap = 3.dp.toPx()
                     val corner = CornerRadius(barW / 2f, barW / 2f)
 
-                    // Regressão Linear y = m*x + b sobre o índice composto normalizado
                     val compositeNorm = FloatArray(count) { i ->
                         val rNorm = (monthlyRepsTotals[i] / maxReps).coerceIn(0f, 1f)
                         val lNorm = (monthlyLoadKg[i] / maxLoad).coerceIn(0f, 1f)
@@ -335,14 +333,14 @@ fun ProgressiveOverloadRegressionChart(
                     val regEndY = padTop + usableH * (1f - (slope * (count - 1) + intercept).coerceIn(0.05f, 0.98f))
 
                     val repsBrush = Brush.verticalGradient(
-                        colors = listOf(LifeOsTheme.GreenHealth, LifeOsTheme.GreenHealth.copy(alpha = 0.35f))
+                        colors = listOf(LifeOsTheme.GreenHealth, LifeOsTheme.GreenHealth.copy(alpha = 0.28f))
                     )
                     val loadBrush = Brush.verticalGradient(
-                        colors = listOf(LifeOsTheme.CyanFinance, LifeOsTheme.CyanFinance.copy(alpha = 0.35f))
+                        colors = listOf(LifeOsTheme.CyanFinance, LifeOsTheme.CyanFinance.copy(alpha = 0.28f))
                     )
                     val gridPx = 1.dp.toPx()
                     val regStrokePx = 2.6.dp.toPx()
-                    val nodeR = 3.8.dp.toPx()
+                    val nodeR = 4.dp.toPx()
 
                     onDrawBehind {
                         for (r in 0..3) {
@@ -374,7 +372,6 @@ fun ProgressiveOverloadRegressionChart(
                             )
                         }
 
-                        // Linha de Regressão Linear de Sobrecarga Progressiva
                         drawLine(
                             color = LifeOsTheme.AmberFocus,
                             start = Offset(regStartX, regStartY),
@@ -394,7 +391,7 @@ fun ProgressiveOverloadRegressionChart(
             horizontalArrangement = Arrangement.SpaceAround
         ) {
             monthLabels.forEach { m ->
-                Text(m, color = LifeOsTheme.TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                Text(m, color = LifeOsTheme.TextMuted, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
             }
         }
     }
@@ -402,8 +399,7 @@ fun ProgressiveOverloadRegressionChart(
 
 /**
  * Gráfico #8 da Suíte 120 FPS — Diagrama de Fluxo de Sankey Fluido (Pilar 6.8 & Pilar 7.3).
- * Ramificação luminosa em curvas cúbicas de Bézier cacheadas (Zero-GC) separando a Renda Líquida
- * entre Investimentos, Custos Fixos e Vazamentos de Capital.
+ * Ramificação luminosa em curvas cúbicas de Bézier cacheadas (Zero-GC) com numerais tabulares formatados.
  */
 @Composable
 fun FluidSankeyCashflowChart(
@@ -433,13 +429,15 @@ fun FluidSankeyCashflowChart(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.padding(end = 8.dp)) {
-                Text("RENDA", color = LifeOsTheme.TextMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+            Column(modifier = Modifier.padding(end = 10.dp)) {
+                Text("RENDA", color = LifeOsTheme.TextMuted, fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.8.sp)
                 Text(
-                    text = String.format(Locale.US, "%.0f", netIncome),
+                    text = LifeOsTheme.formatMoney(netIncome, "", decimals = 0).trim(),
                     color = Color.White,
                     fontSize = 15.sp,
-                    fontWeight = FontWeight.Black
+                    fontWeight = FontWeight.Black,
+                    maxLines = 1,
+                    softWrap = false
                 )
                 Text(currencyCode, color = LifeOsTheme.CyanFinance, fontSize = 10.sp, fontWeight = FontWeight.Bold)
             }
@@ -447,21 +445,21 @@ fun FluidSankeyCashflowChart(
             Spacer(
                 modifier = Modifier
                     .weight(1f)
-                    .height(146.dp)
+                    .height(152.dp)
                     .drawWithCache {
                         val leftBarW = 8.dp.toPx()
                         val rightBarW = 8.dp.toPx()
                         val startX = leftBarW + 2.dp.toPx()
                         val endX = size.width - rightBarW - 2.dp.toPx()
 
-                        val sourceHeight = size.height * 0.62f
+                        val sourceHeight = size.height * 0.64f
                         val sourceTop = (size.height - sourceHeight) / 2f
 
                         val hInv = sourceHeight * fInv
                         val hFix = sourceHeight * fFix
                         val hLeak = sourceHeight * fLeak
 
-                        val targetGap = 14.dp.toPx()
+                        val targetGap = 15.dp.toPx()
                         val totalTargetSpan = hInv + hFix + hLeak + targetGap * 2f
                         val targetStartTop = ((size.height - totalTargetSpan) / 2f).coerceAtLeast(4f)
 
@@ -488,18 +486,18 @@ fun FluidSankeyCashflowChart(
                         buildRibbon(leakRibbon, srcLeakTop, tgtLeakTop, hLeak)
 
                         val brushInv = Brush.horizontalGradient(
-                            colors = listOf(LifeOsTheme.CyanFinance.copy(alpha = 0.55f), LifeOsTheme.GreenHealth.copy(alpha = 0.78f))
+                            colors = listOf(LifeOsTheme.CyanFinance.copy(alpha = 0.48f), LifeOsTheme.GreenHealth.copy(alpha = 0.82f))
                         )
                         val brushFix = Brush.horizontalGradient(
-                            colors = listOf(LifeOsTheme.CyanFinance.copy(alpha = 0.45f), LifeOsTheme.PurpleStudy.copy(alpha = 0.72f))
+                            colors = listOf(LifeOsTheme.CyanFinance.copy(alpha = 0.42f), LifeOsTheme.PurpleStudy.copy(alpha = 0.78f))
                         )
                         val brushLeak = Brush.horizontalGradient(
-                            colors = listOf(LifeOsTheme.AmberFocus.copy(alpha = 0.45f), LifeOsTheme.RedExpense.copy(alpha = 0.80f))
+                            colors = listOf(LifeOsTheme.AmberFocus.copy(alpha = 0.42f), LifeOsTheme.RedExpense.copy(alpha = 0.82f))
                         )
                         val barCorner = CornerRadius(4.dp.toPx(), 4.dp.toPx())
+                        val ribbonRim = Stroke(width = 0.8.dp.toPx())
 
                         onDrawBehind {
-                            // Barra tronco da Renda Líquida
                             drawRoundRect(
                                 color = LifeOsTheme.CyanFinance,
                                 topLeft = Offset(0f, sourceTop),
@@ -508,10 +506,14 @@ fun FluidSankeyCashflowChart(
                             )
 
                             drawPath(path = investRibbon, brush = brushInv)
-                            drawPath(path = fixedRibbon, brush = brushFix)
-                            drawPath(path = leakRibbon, brush = brushLeak)
+                            drawPath(path = investRibbon, color = LifeOsTheme.GreenHealth.copy(alpha = 0.45f), style = ribbonRim)
 
-                            // Barras receptoras à direita
+                            drawPath(path = fixedRibbon, brush = brushFix)
+                            drawPath(path = fixedRibbon, color = LifeOsTheme.PurpleStudy.copy(alpha = 0.45f), style = ribbonRim)
+
+                            drawPath(path = leakRibbon, brush = brushLeak)
+                            drawPath(path = leakRibbon, color = LifeOsTheme.RedExpense.copy(alpha = 0.45f), style = ribbonRim)
+
                             drawRoundRect(
                                 color = LifeOsTheme.GreenHealth,
                                 topLeft = Offset(size.width - rightBarW, tgtInvTop),
@@ -535,20 +537,20 @@ fun FluidSankeyCashflowChart(
             )
 
             Column(
-                modifier = Modifier.padding(start = 8.dp),
+                modifier = Modifier.padding(start = 10.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Column {
                     Text("Investimentos", color = LifeOsTheme.GreenHealth, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                    Text(String.format(Locale.US, "%.0f %s", investmentsAmount, currencyCode), color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                    Text(LifeOsTheme.formatMoney(investmentsAmount, currencyCode, decimals = 0), color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                 }
                 Column {
                     Text("Custos Fixos", color = LifeOsTheme.PurpleStudy, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                    Text(String.format(Locale.US, "%.0f %s", fixedCostsAmount, currencyCode), color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                    Text(LifeOsTheme.formatMoney(fixedCostsAmount, currencyCode, decimals = 0), color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                 }
                 Column {
                     Text("Vazamentos", color = LifeOsTheme.RedExpense, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                    Text(String.format(Locale.US, "%.0f %s", leakageAmount, currencyCode), color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                    Text(LifeOsTheme.formatMoney(leakageAmount, currencyCode, decimals = 0), color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                 }
             }
         }

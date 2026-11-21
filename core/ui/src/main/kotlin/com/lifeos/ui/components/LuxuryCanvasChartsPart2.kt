@@ -1,5 +1,7 @@
 package com.lifeos.ui.components
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,11 +11,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -36,8 +41,8 @@ import kotlin.math.sin
 
 /**
  * Gráfico #9 da Suíte 120 FPS — Curva Dente-de-Serra de Ebbinghaus (Pilar 6.9 & Pilar 7.3).
- * Desenho exato do decaimento exponencial R(t) = exp(-t / S) com saltos verticais de restauração
- * a 100% nas revisões espaçadas [Dia 1, 3, 7, 16, 30] usando Paths cacheados (Zero-GC).
+ * Escala perceptual calibrada para que cada revisão espaçada [D0, 1d, 3d, 7d, 16d, 30d] exiba
+ * nitidamente a queda exponencial R(t) = exp(-t / S) e o salto vertical a 100% em Zero-GC.
  */
 @Composable
 fun EbbinghausSawtoothCurveChart(
@@ -52,97 +57,121 @@ fun EbbinghausSawtoothCurveChart(
         Spacer(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(152.dp)
+                .height(158.dp)
                 .drawWithCache {
                     val padTop = 12.dp.toPx()
                     val padBottom = 10.dp.toPx()
+                    val padHoriz = 8.dp.toPx()
+                    val usableW = (size.width - padHoriz * 2f).coerceAtLeast(20f)
                     val usableH = (size.height - padTop - padBottom).coerceAtLeast(20f)
-                    val totalDays = 30f
 
-                    fun mapPt(day: Float, retention0to1: Float): Offset {
-                        val x = (day / totalDays).coerceIn(0f, 1f) * size.width
+                    // Posições perceptuais equiespaçadas para D0, 1d, 3d, 7d, 16d e 30d
+                    val checkpointsDays = floatArrayOf(0f, 1f, 3f, 7f, 16f, 30f)
+                    val stageFractions = floatArrayOf(0.00f, 0.17f, 0.35f, 0.55f, 0.77f, 1.00f)
+                    val stabilities = floatArrayOf(1.95f, 5.1f, 11.2f, 23.5f, 46.0f)
+
+                    fun mapStagePt(stagePos0to1: Float, retention0to1: Float): Offset {
+                        val x = padHoriz + stagePos0to1.coerceIn(0f, 1f) * usableW
                         val y = padTop + usableH * (1f - retention0to1.coerceIn(0f, 1f))
                         return Offset(x, y)
                     }
 
-                    // Marcos de revisão espaçada [0 -> 1 -> 3 -> 7 -> 16 -> 30] e constantes S crescentes
-                    val checkpoints = floatArrayOf(0f, 1f, 3f, 7f, 16f, 30f)
-                    val stabilities = floatArrayOf(1.9f, 5.2f, 11.5f, 24.0f, 48.0f)
-
                     sawtoothPath.reset()
-                    val pStart = mapPt(0f, 1f)
+                    val pStart = mapStagePt(0f, 1f)
                     sawtoothPath.moveTo(pStart.x, pStart.y)
 
-                    for (seg in 0 until checkpoints.lastIndex) {
-                        val t0 = checkpoints[seg]
-                        val t1 = checkpoints[seg + 1]
+                    for (seg in 0 until checkpointsDays.lastIndex) {
+                        val t0 = checkpointsDays[seg]
+                        val t1 = checkpointsDays[seg + 1]
+                        val x0 = stageFractions[seg]
+                        val x1 = stageFractions[seg + 1]
                         val s = stabilities[seg]
-                        val subSteps = 12
+                        val subSteps = 14
                         for (k in 1..subSteps) {
-                            val dt = (t1 - t0) * (k / subSteps.toFloat())
-                            val r = exp((-dt / s).toDouble()).toFloat().coerceIn(0.32f, 1f)
-                            val pt = mapPt(t0 + dt, r)
+                            val u = k / subSteps.toFloat()
+                            val dt = (t1 - t0) * u
+                            val r = exp((-dt / s).toDouble()).toFloat().coerceIn(0.38f, 1f)
+                            val pt = mapStagePt(x0 + (x1 - x0) * u, r)
                             sawtoothPath.lineTo(pt.x, pt.y)
                         }
-                        // Salto vertical de restauração a 100% na revisão espaçada
-                        val restoredPt = mapPt(t1, 1f)
+                        // Salto vertical de restauração mnemônica a 100%
+                        val restoredPt = mapStagePt(x1, 1f)
                         sawtoothPath.lineTo(restoredPt.x, restoredPt.y)
                     }
 
+                    val endPt = mapStagePt(1f, 1f)
                     sawtoothFill.reset()
                     sawtoothFill.addPath(sawtoothPath)
-                    sawtoothFill.lineTo(size.width, size.height - padBottom)
-                    sawtoothFill.lineTo(0f, size.height - padBottom)
+                    sawtoothFill.lineTo(endPt.x, size.height - padBottom)
+                    sawtoothFill.lineTo(pStart.x, size.height - padBottom)
                     sawtoothFill.close()
 
-                    // Curva fantasma sem revisão (esquecimento puro)
+                    // Curva fantasma sem revisão (decaimento puro até ~20%)
                     unreviewedDecayPath.reset()
                     unreviewedDecayPath.moveTo(pStart.x, pStart.y)
-                    for (step in 1..30) {
-                        val d = step.toFloat()
-                        val r = (0.18f + 0.82f * exp((-d / 2.2f).toDouble()).toFloat())
-                        val pt = mapPt(d, r)
+                    for (step in 1..40) {
+                        val u = step / 40f
+                        val virtualDay = u * 30f
+                        val r = (0.20f + 0.80f * exp((-virtualDay / 3.4f).toDouble()).toFloat())
+                        val pt = mapStagePt(u, r)
                         unreviewedDecayPath.lineTo(pt.x, pt.y)
                     }
 
                     val fillBrush = Brush.verticalGradient(
-                        colors = listOf(LifeOsTheme.PurpleStudy.copy(alpha = 0.34f), Color.Transparent)
+                        colors = listOf(
+                            LifeOsTheme.PurpleStudy.copy(alpha = 0.38f),
+                            LifeOsTheme.CyanFinance.copy(alpha = 0.08f),
+                            Color.Transparent
+                        )
                     )
-                    val mainStroke = Stroke(width = 2.6.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+                    val lineBrush = Brush.horizontalGradient(
+                        colors = listOf(LifeOsTheme.PurpleStudy, Color(0xFFB388FF), LifeOsTheme.GreenHealth)
+                    )
+                    val mainStroke = Stroke(width = 2.8.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
                     val decayDash = Stroke(
                         width = 1.6.dp.toPx(),
                         pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 6f), 0f)
                     )
-                    val peakOffsets = Array(checkpoints.size) { i -> mapPt(checkpoints[i], 1f) }
+                    val guideDash = PathEffect.dashPathEffect(floatArrayOf(4f, 5f), 0f)
+                    val peakOffsets = Array(stageFractions.size) { i -> mapStagePt(stageFractions[i], 1f) }
                     val gridPx = 1.dp.toPx()
-                    val dotR = 4.2.dp.toPx()
+                    val dotR = 4.5.dp.toPx()
+                    val haloR = 8.5.dp.toPx()
 
                     onDrawBehind {
                         for (r in 0..3) {
                             val y = padTop + usableH * (r / 3f)
                             drawLine(
                                 color = LifeOsTheme.BorderSubtle,
-                                start = Offset(0f, y),
-                                end = Offset(size.width, y),
+                                start = Offset(padHoriz, y),
+                                end = Offset(size.width - padHoriz, y),
                                 strokeWidth = gridPx
+                            )
+                        }
+
+                        peakOffsets.forEach { pt ->
+                            drawLine(
+                                color = Color.White.copy(alpha = 0.08f),
+                                start = pt,
+                                end = Offset(pt.x, size.height - padBottom),
+                                strokeWidth = gridPx,
+                                pathEffect = guideDash
                             )
                         }
 
                         drawPath(
                             path = unreviewedDecayPath,
-                            color = LifeOsTheme.RedExpense.copy(alpha = 0.55f),
+                            color = LifeOsTheme.RedExpense.copy(alpha = 0.58f),
                             style = decayDash
                         )
                         drawPath(path = sawtoothFill, brush = fillBrush)
-                        drawPath(path = sawtoothPath, color = LifeOsTheme.PurpleStudy, style = mainStroke)
+                        drawPath(path = sawtoothPath, brush = lineBrush, style = mainStroke)
 
                         peakOffsets.forEachIndexed { idx, pt ->
                             val isReached = idx <= (activeStageIndex + 1)
-                            drawCircle(
-                                color = if (isReached) LifeOsTheme.GreenHealth else LifeOsTheme.PurpleStudy,
-                                radius = dotR,
-                                center = pt
-                            )
+                            val nodeColor = if (isReached) LifeOsTheme.GreenHealth else LifeOsTheme.PurpleStudy
+                            drawCircle(color = nodeColor.copy(alpha = 0.24f), radius = haloR, center = pt)
+                            drawCircle(color = nodeColor, radius = dotR, center = pt)
                         }
                     }
                 }
@@ -150,11 +179,19 @@ fun EbbinghausSawtoothCurveChart(
 
         Spacer(modifier = Modifier.height(6.dp))
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            listOf("D0", "1d", "3d", "7d", "16d", "30d (100%)").forEach { lbl ->
-                Text(lbl, color = LifeOsTheme.TextMuted, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+            listOf("D0", "+1d", "+3d", "+7d", "+16d", "+30d · 100%").forEachIndexed { idx, lbl ->
+                val reached = idx <= (activeStageIndex + 1)
+                Text(
+                    text = lbl,
+                    color = if (reached) LifeOsTheme.GreenHealth else LifeOsTheme.TextMuted,
+                    fontSize = 10.sp,
+                    fontWeight = if (reached) FontWeight.Bold else FontWeight.SemiBold
+                )
             }
         }
     }
@@ -189,7 +226,6 @@ fun MultivariateCorrelationScatterChart(
                         )
                     }
 
-                    // Regressão linear sobre os pontos normalizados
                     val n = xyNormalizedPairs.size.coerceAtLeast(1).toFloat()
                     val meanX = xyNormalizedPairs.sumOf { it.first.toDouble() }.toFloat() / n
                     val meanY = xyNormalizedPairs.sumOf { it.second.toDouble() }.toFloat() / n
@@ -215,7 +251,6 @@ fun MultivariateCorrelationScatterChart(
                     val dotR = 4.2.dp.toPx()
 
                     onDrawBehind {
-                        // Quadrantes analíticos
                         drawLine(
                             color = LifeOsTheme.BorderSubtle,
                             start = Offset(size.width / 2f, pad),
@@ -229,7 +264,6 @@ fun MultivariateCorrelationScatterChart(
                             strokeWidth = gridPx
                         )
 
-                        // Reta de correlação multivariada
                         drawLine(
                             color = LifeOsTheme.AmberFocus.copy(alpha = 0.85f),
                             start = trendStart,
@@ -244,7 +278,7 @@ fun MultivariateCorrelationScatterChart(
                             } else {
                                 LifeOsTheme.RedExpense
                             }
-                            drawCircle(color = c.copy(alpha = 0.20f), radius = haloR, center = pt)
+                            drawCircle(color = c.copy(alpha = 0.22f), radius = haloR, center = pt)
                             drawCircle(color = c, radius = dotR, center = pt)
                         }
                     }
@@ -255,16 +289,16 @@ fun MultivariateCorrelationScatterChart(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("← Menos Sono / Sem Treino", color = LifeOsTheme.RedExpense, fontSize = 10.sp)
-            Text("Sono Reparador + Treino →", color = LifeOsTheme.GreenHealth, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            Text("← Privação de Sono", color = LifeOsTheme.RedExpense, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+            Text("Sono + Treino Consistente →", color = LifeOsTheme.GreenHealth, fontSize = 10.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
 
 /**
- * Gráfico #11 da Suíte 120 FPS — Mapa Anatômico de Fadiga Muscular (Pilar 6.11 & Pilar 7.3).
- * Silhueta vetorial Anterior e Posterior renderizada em Zero-GC com termografia fisiológica:
- * Vermelho (Fadiga Aguda) -> Âmbar (Recuperação 48h) -> Verde (Supercompensação 100%).
+ * Gráfico #11 da Suíte 120 FPS — Mapa Anatômico Esculpido de Fadiga Muscular (Pilar 6.11 & Pilar 7.3).
+ * Silhueta anatômica orgânica Anterior e Posterior esculpida em curvas de Bézier cacheadas (Zero-GC)
+ * com termografia miofascial: Vermelho (Fadiga Aguda) -> Âmbar (Síntese 48h) -> Verde (Supercompensado).
  */
 @Composable
 fun AnatomicalMuscleFatigueMap(
@@ -276,13 +310,23 @@ fun AnatomicalMuscleFatigueMap(
     legsRecovery: Float,
     modifier: Modifier = Modifier.fillMaxWidth()
 ) {
-    val latsPath = remember { Path() }
+    // Paths anatômicos esculpidos uma única vez em RAM e reutilizados em drawWithCache (Zero-GC)
+    val pecLeftPath = remember { Path() }
+    val pecRightPath = remember { Path() }
+    val trapsFrontPath = remember { Path() }
+    val trapsBackPath = remember { Path() }
+    val latsBackPath = remember { Path() }
+    val deltPath = remember { Path() }
+    val armsFrontPath = remember { Path() }
+    val armsBackPath = remember { Path() }
+    val quadCalvesFrontPath = remember { Path() }
+    val glutesHamsBackPath = remember { Path() }
 
     Column(modifier = modifier) {
         Spacer(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(186.dp)
+                .height(212.dp)
                 .drawWithCache {
                     fun recoveryColor(fraction: Float): Color {
                         val f = fraction.coerceIn(0f, 1f)
@@ -300,136 +344,291 @@ fun AnatomicalMuscleFatigueMap(
                     val cCore = recoveryColor(coreRecovery)
                     val cLegs = recoveryColor(legsRecovery)
 
-                    val frontCx = size.width * 0.27f
-                    val backCx = size.width * 0.73f
-                    val topY = 12.dp.toPx()
-                    val headR = 11.dp.toPx()
-                    val torsoTop = topY + headR * 2f + 6.dp.toPx()
-                    val torsoW = 42.dp.toPx()
-                    val chestH = 26.dp.toPx()
-                    val coreH = 34.dp.toPx()
-                    val shoulderR = 9.dp.toPx()
-                    val armW = 10.dp.toPx()
-                    val armH = 48.dp.toPx()
-                    val legW = 15.dp.toPx()
-                    val legH = 56.dp.toPx()
-                    val pillCorner = CornerRadius(6.dp.toPx(), 6.dp.toPx())
-                    val silhouetteStroke = Stroke(width = 1.2.dp.toPx())
+                    val fCx = size.width * 0.26f
+                    val bCx = size.width * 0.74f
+                    val u = size.height / 212f
 
-                    // Trapézio / Grande Dorsal em V na Vista Posterior (Path cacheado)
-                    latsPath.reset()
-                    latsPath.moveTo(backCx - torsoW * 0.55f, torsoTop)
-                    latsPath.lineTo(backCx + torsoW * 0.55f, torsoTop)
-                    latsPath.lineTo(backCx + torsoW * 0.34f, torsoTop + chestH + coreH * 0.68f)
-                    latsPath.lineTo(backCx - torsoW * 0.34f, torsoTop + chestH + coreH * 0.68f)
-                    latsPath.close()
+                    // Cabeça e referências verticais proporcionais
+                    val headCy = 22f * u
+                    val headRx = 11f * u
+                    val neckBottom = 38f * u
+                    val chestBottom = 68f * u
+                    val waistY = 104f * u
+                    val crotchY = 114f * u
+                    val kneeY = 156f * u
+                    val ankleY = 196f * u
+
+                    // 1. Trapézio Anterior
+                    trapsFrontPath.reset()
+                    trapsFrontPath.moveTo(fCx - 7f * u, neckBottom - 4f * u)
+                    trapsFrontPath.lineTo(fCx - 24f * u, neckBottom + 4f * u)
+                    trapsFrontPath.lineTo(fCx + 24f * u, neckBottom + 4f * u)
+                    trapsFrontPath.lineTo(fCx + 7f * u, neckBottom - 4f * u)
+                    trapsFrontPath.close()
+
+                    // 2. Peitoral Maior Esculpido (Esquerdo & Direito)
+                    pecLeftPath.reset()
+                    pecLeftPath.moveTo(fCx - 2f * u, neckBottom + 4f * u)
+                    pecLeftPath.lineTo(fCx - 23f * u, neckBottom + 5f * u)
+                    pecLeftPath.cubicTo(fCx - 26f * u, chestBottom - 8f * u, fCx - 21f * u, chestBottom, fCx - 10f * u, chestBottom)
+                    pecLeftPath.cubicTo(fCx - 4f * u, chestBottom, fCx - 2f * u, chestBottom - 4f * u, fCx - 2f * u, chestBottom - 7f * u)
+                    pecLeftPath.close()
+
+                    pecRightPath.reset()
+                    pecRightPath.moveTo(fCx + 2f * u, neckBottom + 4f * u)
+                    pecRightPath.lineTo(fCx + 23f * u, neckBottom + 5f * u)
+                    pecRightPath.cubicTo(fCx + 26f * u, chestBottom - 8f * u, fCx + 21f * u, chestBottom, fCx + 10f * u, chestBottom)
+                    pecRightPath.cubicTo(fCx + 4f * u, chestBottom, fCx + 2f * u, chestBottom - 4f * u, fCx + 2f * u, chestBottom - 7f * u)
+                    pecRightPath.close()
+
+                    // 3. Cápsulas de Deltoides (Anterior + Posterior)
+                    deltPath.reset()
+                    fun addDeltCap(cx: Float, sign: Float) {
+                        deltPath.moveTo(cx + sign * 22f * u, neckBottom + 3f * u)
+                        deltPath.cubicTo(
+                            cx + sign * 35f * u, neckBottom + 5f * u,
+                            cx + sign * 36f * u, neckBottom + 22f * u,
+                            cx + sign * 26f * u, neckBottom + 26f * u
+                        )
+                        deltPath.cubicTo(
+                            cx + sign * 22f * u, neckBottom + 20f * u,
+                            cx + sign * 21f * u, neckBottom + 10f * u,
+                            cx + sign * 22f * u, neckBottom + 3f * u
+                        )
+                        deltPath.close()
+                    }
+                    addDeltCap(fCx, -1f)
+                    addDeltCap(fCx, 1f)
+                    addDeltCap(bCx, -1f)
+                    addDeltCap(bCx, 1f)
+
+                    // 4. Bíceps + Antebraços Orgânicos (Anterior) e Tríceps + Antebraços (Posterior)
+                    fun buildArmsForCenter(target: Path, cx: Float) {
+                        target.reset()
+                        for (sign in floatArrayOf(-1f, 1f)) {
+                            // Bíceps / Tríceps fusiforme
+                            target.moveTo(cx + sign * 26f * u, neckBottom + 26f * u)
+                            target.cubicTo(
+                                cx + sign * 36f * u, neckBottom + 34f * u,
+                                cx + sign * 37f * u, neckBottom + 48f * u,
+                                cx + sign * 31f * u, neckBottom + 56f * u
+                            )
+                            // Antebraço afunilando até o punho
+                            target.cubicTo(
+                                cx + sign * 36f * u, neckBottom + 64f * u,
+                                cx + sign * 34f * u, neckBottom + 78f * u,
+                                cx + sign * 31f * u, neckBottom + 86f * u
+                            )
+                            target.lineTo(cx + sign * 25f * u, neckBottom + 86f * u)
+                            target.cubicTo(
+                                cx + sign * 25f * u, neckBottom + 74f * u,
+                                cx + sign * 23f * u, neckBottom + 62f * u,
+                                cx + sign * 23f * u, neckBottom + 54f * u
+                            )
+                            target.cubicTo(
+                                cx + sign * 21f * u, neckBottom + 44f * u,
+                                cx + sign * 21f * u, neckBottom + 33f * u,
+                                cx + sign * 26f * u, neckBottom + 26f * u
+                            )
+                            target.close()
+                        }
+                    }
+                    buildArmsForCenter(armsFrontPath, fCx)
+                    buildArmsForCenter(armsBackPath, bCx)
+
+                    // 5. Quadríceps em Gota + Panturrilhas (Anterior)
+                    quadCalvesFrontPath.reset()
+                    for (sign in floatArrayOf(-1f, 1f)) {
+                        // Quadríceps (Vasto Lateral externo curvo + Vasto Medial em gota)
+                        quadCalvesFrontPath.moveTo(fCx + sign * 18f * u, waistY + 4f * u)
+                        quadCalvesFrontPath.cubicTo(
+                            fCx + sign * 26f * u, waistY + 20f * u,
+                            fCx + sign * 24f * u, kneeY - 12f * u,
+                            fCx + sign * 16f * u, kneeY
+                        )
+                        quadCalvesFrontPath.lineTo(fCx + sign * 6f * u, kneeY)
+                        quadCalvesFrontPath.cubicTo(
+                            fCx + sign * 3f * u, kneeY - 14f * u,
+                            fCx + sign * 3f * u, crotchY + 8f * u,
+                            fCx + sign * 4f * u, crotchY
+                        )
+                        quadCalvesFrontPath.lineTo(fCx + sign * 18f * u, waistY + 4f * u)
+                        quadCalvesFrontPath.close()
+
+                        // Gastrocnêmio / Tibial Anterior
+                        quadCalvesFrontPath.moveTo(fCx + sign * 16f * u, kneeY + 3f * u)
+                        quadCalvesFrontPath.cubicTo(
+                            fCx + sign * 21f * u, kneeY + 15f * u,
+                            fCx + sign * 18f * u, ankleY - 12f * u,
+                            fCx + sign * 13f * u, ankleY
+                        )
+                        quadCalvesFrontPath.lineTo(fCx + sign * 7f * u, ankleY)
+                        quadCalvesFrontPath.cubicTo(
+                            fCx + sign * 5f * u, ankleY - 14f * u,
+                            fCx + sign * 4f * u, kneeY + 14f * u,
+                            fCx + sign * 7f * u, kneeY + 3f * u
+                        )
+                        quadCalvesFrontPath.close()
+                    }
+
+                    // 6. Trapézio Diamante + Grande Dorsal em V (Posterior)
+                    trapsBackPath.reset()
+                    trapsBackPath.moveTo(bCx, neckBottom - 5f * u)
+                    trapsBackPath.lineTo(bCx - 22f * u, neckBottom + 5f * u)
+                    trapsBackPath.lineTo(bCx, chestBottom + 4f * u)
+                    trapsBackPath.lineTo(bCx + 22f * u, neckBottom + 5f * u)
+                    trapsBackPath.close()
+
+                    latsBackPath.reset()
+                    latsBackPath.moveTo(bCx - 23f * u, neckBottom + 7f * u)
+                    latsBackPath.lineTo(bCx - 2f * u, chestBottom + 4f * u)
+                    latsBackPath.lineTo(bCx - 2f * u, waistY - 4f * u)
+                    latsBackPath.lineTo(bCx - 14f * u, waistY - 4f * u)
+                    latsBackPath.cubicTo(
+                        bCx - 20f * u, chestBottom + 16f * u,
+                        bCx - 26f * u, chestBottom - 2f * u,
+                        bCx - 23f * u, neckBottom + 7f * u
+                    )
+                    latsBackPath.close()
+
+                    latsBackPath.moveTo(bCx + 23f * u, neckBottom + 7f * u)
+                    latsBackPath.lineTo(bCx + 2f * u, chestBottom + 4f * u)
+                    latsBackPath.lineTo(bCx + 2f * u, waistY - 4f * u)
+                    latsBackPath.lineTo(bCx + 14f * u, waistY - 4f * u)
+                    latsBackPath.cubicTo(
+                        bCx + 20f * u, chestBottom + 16f * u,
+                        bCx + 26f * u, chestBottom - 2f * u,
+                        bCx + 23f * u, neckBottom + 7f * u
+                    )
+                    latsBackPath.close()
+
+                    // 7. Glúteos + Isquiotibiais + Panturrilhas em Diamante (Posterior)
+                    glutesHamsBackPath.reset()
+                    for (sign in floatArrayOf(-1f, 1f)) {
+                        // Glúteo + Isquiotibiais
+                        glutesHamsBackPath.moveTo(bCx + sign * 15f * u, waistY + 2f * u)
+                        glutesHamsBackPath.cubicTo(
+                            bCx + sign * 25f * u, waistY + 14f * u,
+                            bCx + sign * 24f * u, kneeY - 14f * u,
+                            bCx + sign * 16f * u, kneeY
+                        )
+                        glutesHamsBackPath.lineTo(bCx + sign * 6f * u, kneeY)
+                        glutesHamsBackPath.cubicTo(
+                            bCx + sign * 3f * u, kneeY - 14f * u,
+                            bCx + sign * 2f * u, crotchY + 4f * u,
+                            bCx + sign * 2f * u, waistY + 2f * u
+                        )
+                        glutesHamsBackPath.close()
+
+                        // Gastrocnêmio Posterior
+                        glutesHamsBackPath.moveTo(bCx + sign * 16f * u, kneeY + 3f * u)
+                        glutesHamsBackPath.cubicTo(
+                            bCx + sign * 22f * u, kneeY + 15f * u,
+                            bCx + sign * 18f * u, ankleY - 12f * u,
+                            bCx + sign * 13f * u, ankleY
+                        )
+                        glutesHamsBackPath.lineTo(bCx + sign * 7f * u, ankleY)
+                        glutesHamsBackPath.cubicTo(
+                            bCx + sign * 4f * u, ankleY - 14f * u,
+                            bCx + sign * 4f * u, kneeY + 14f * u,
+                            bCx + sign * 7f * u, kneeY + 3f * u
+                        )
+                        glutesHamsBackPath.close()
+                    }
+
+                    val outlineStroke = Stroke(width = 1.1.dp.toPx(), join = StrokeJoin.Round)
+                    val abCorner = CornerRadius(3.dp.toPx(), 3.dp.toPx())
+                    val gridDash = PathEffect.dashPathEffect(floatArrayOf(4f, 6f), 0f)
+                    val podiumFront = Brush.radialGradient(
+                        colors = listOf(cChest.copy(alpha = 0.16f), Color.Transparent),
+                        center = Offset(fCx, size.height * 0.52f),
+                        radius = 86.dp.toPx()
+                    )
+                    val podiumBack = Brush.radialGradient(
+                        colors = listOf(cBack.copy(alpha = 0.16f), Color.Transparent),
+                        center = Offset(bCx, size.height * 0.52f),
+                        radius = 86.dp.toPx()
+                    )
 
                     onDrawBehind {
-                        // ================= VISTA ANTERIOR =================
-                        drawCircle(color = Color(0xFF23252C), radius = headR, center = Offset(frontCx, topY + headR))
-                        drawCircle(color = LifeOsTheme.TextMuted, radius = headR, center = Offset(frontCx, topY + headR), style = silhouetteStroke)
+                        // Auras de scanner biométrico de fundo
+                        drawCircle(brush = podiumFront, radius = 86.dp.toPx(), center = Offset(fCx, size.height * 0.52f))
+                        drawCircle(brush = podiumBack, radius = 86.dp.toPx(), center = Offset(bCx, size.height * 0.52f))
 
-                        // Deltoides Anterior
-                        drawCircle(color = cShoulder, radius = shoulderR, center = Offset(frontCx - torsoW * 0.62f, torsoTop + 6.dp.toPx()))
-                        drawCircle(color = cShoulder, radius = shoulderR, center = Offset(frontCx + torsoW * 0.62f, torsoTop + 6.dp.toPx()))
-
-                        // Peitoral Bilateral
-                        drawRoundRect(
-                            color = cChest,
-                            topLeft = Offset(frontCx - torsoW / 2f, torsoTop),
-                            size = Size(torsoW / 2f - 1.5.dp.toPx(), chestH),
-                            cornerRadius = pillCorner
-                        )
-                        drawRoundRect(
-                            color = cChest,
-                            topLeft = Offset(frontCx + 1.5.dp.toPx(), torsoTop),
-                            size = Size(torsoW / 2f - 1.5.dp.toPx(), chestH),
-                            cornerRadius = pillCorner
+                        // Divisor central de telemetria
+                        drawLine(
+                            color = LifeOsTheme.BorderSubtle,
+                            start = Offset(size.width / 2f, 10f * u),
+                            end = Offset(size.width / 2f, ankleY),
+                            strokeWidth = 1.dp.toPx(),
+                            pathEffect = gridDash
                         )
 
-                        // Core / Reto Abdominal
+                        // Cabeça + Pescoço (Anterior e Posterior)
+                        for (cx in floatArrayOf(fCx, bCx)) {
+                            drawRoundRect(
+                                color = Color(0xFF1F2330),
+                                topLeft = Offset(cx - 5.5f * u, headCy + headRx - 2f * u),
+                                size = Size(11f * u, 9f * u),
+                                cornerRadius = abCorner
+                            )
+                            drawCircle(color = Color(0xFF1B1F2B), radius = headRx, center = Offset(cx, headCy))
+                            drawCircle(color = LifeOsTheme.BorderSpecular, radius = headRx, center = Offset(cx, headCy), style = outlineStroke)
+                        }
+
+                        // Trapézios e Deltoides
+                        drawPath(path = trapsFrontPath, color = cShoulder.copy(alpha = 0.72f))
+                        drawPath(path = deltPath, color = cShoulder.copy(alpha = 0.88f))
+                        drawPath(path = deltPath, color = Color.White.copy(alpha = 0.22f), style = outlineStroke)
+
+                        // Peitorais Esculpidos
+                        drawPath(path = pecLeftPath, color = cChest.copy(alpha = 0.88f))
+                        drawPath(path = pecRightPath, color = cChest.copy(alpha = 0.88f))
+                        drawPath(path = pecLeftPath, color = Color.White.copy(alpha = 0.24f), style = outlineStroke)
+                        drawPath(path = pecRightPath, color = Color.White.copy(alpha = 0.24f), style = outlineStroke)
+
+                        // Reto Abdominal Segmentado (6-pack anatômico)
+                        val abW = 10.5f * u
+                        val abH = 9.2f * u
+                        for (row in 0..2) {
+                            val ay = chestBottom + 3f * u + row * (abH + 2.4f * u)
+                            drawRoundRect(
+                                color = cCore.copy(alpha = 0.86f),
+                                topLeft = Offset(fCx - abW - 1.4f * u, ay),
+                                size = Size(abW, abH),
+                                cornerRadius = abCorner
+                            )
+                            drawRoundRect(
+                                color = cCore.copy(alpha = 0.86f),
+                                topLeft = Offset(fCx + 1.4f * u, ay),
+                                size = Size(abW, abH),
+                                cornerRadius = abCorner
+                            )
+                        }
+
+                        // Dorsal em V + Trapézio Diamante + Lombar (Posterior)
+                        drawPath(path = latsBackPath, color = cBack.copy(alpha = 0.88f))
+                        drawPath(path = latsBackPath, color = Color.White.copy(alpha = 0.22f), style = outlineStroke)
+                        drawPath(path = trapsBackPath, color = cBack.copy(alpha = 0.96f))
+                        drawPath(path = trapsBackPath, color = Color.White.copy(alpha = 0.26f), style = outlineStroke)
+
                         drawRoundRect(
-                            color = cCore,
-                            topLeft = Offset(frontCx - torsoW * 0.38f, torsoTop + chestH + 3.dp.toPx()),
-                            size = Size(torsoW * 0.76f, coreH),
-                            cornerRadius = pillCorner
+                            color = cCore.copy(alpha = 0.78f),
+                            topLeft = Offset(bCx - 12f * u, waistY - 4f * u),
+                            size = Size(24f * u, 9f * u),
+                            cornerRadius = abCorner
                         )
 
-                        // Bíceps / Antebraços
-                        drawRoundRect(
-                            color = cArms,
-                            topLeft = Offset(frontCx - torsoW * 0.62f - armW / 2f, torsoTop + shoulderR + 4.dp.toPx()),
-                            size = Size(armW, armH),
-                            cornerRadius = pillCorner
-                        )
-                        drawRoundRect(
-                            color = cArms,
-                            topLeft = Offset(frontCx + torsoW * 0.62f - armW / 2f, torsoTop + shoulderR + 4.dp.toPx()),
-                            size = Size(armW, armH),
-                            cornerRadius = pillCorner
-                        )
+                        // Braços e Pernas (Anterior + Posterior)
+                        drawPath(path = armsFrontPath, color = cArms.copy(alpha = 0.86f))
+                        drawPath(path = armsFrontPath, color = Color.White.copy(alpha = 0.20f), style = outlineStroke)
+                        drawPath(path = armsBackPath, color = cArms.copy(alpha = 0.86f))
+                        drawPath(path = armsBackPath, color = Color.White.copy(alpha = 0.20f), style = outlineStroke)
 
-                        // Quadríceps
-                        val legsTop = torsoTop + chestH + coreH + 7.dp.toPx()
-                        drawRoundRect(
-                            color = cLegs,
-                            topLeft = Offset(frontCx - legW - 3.dp.toPx(), legsTop),
-                            size = Size(legW, legH),
-                            cornerRadius = pillCorner
-                        )
-                        drawRoundRect(
-                            color = cLegs,
-                            topLeft = Offset(frontCx + 3.dp.toPx(), legsTop),
-                            size = Size(legW, legH),
-                            cornerRadius = pillCorner
-                        )
-
-                        // ================= VISTA POSTERIOR =================
-                        drawCircle(color = Color(0xFF23252C), radius = headR, center = Offset(backCx, topY + headR))
-                        drawCircle(color = LifeOsTheme.TextMuted, radius = headR, center = Offset(backCx, topY + headR), style = silhouetteStroke)
-
-                        // Deltoides Posterior
-                        drawCircle(color = cShoulder, radius = shoulderR, center = Offset(backCx - torsoW * 0.62f, torsoTop + 6.dp.toPx()))
-                        drawCircle(color = cShoulder, radius = shoulderR, center = Offset(backCx + torsoW * 0.62f, torsoTop + 6.dp.toPx()))
-
-                        // Dorsal em V (Barra Fixa / Remada)
-                        drawPath(path = latsPath, color = cBack)
-
-                        // Lombar / Core Posterior
-                        drawRoundRect(
-                            color = cCore.copy(alpha = 0.85f),
-                            topLeft = Offset(backCx - torsoW * 0.30f, torsoTop + chestH + coreH * 0.72f),
-                            size = Size(torsoW * 0.60f, coreH * 0.32f),
-                            cornerRadius = pillCorner
-                        )
-
-                        // Tríceps
-                        drawRoundRect(
-                            color = cArms,
-                            topLeft = Offset(backCx - torsoW * 0.62f - armW / 2f, torsoTop + shoulderR + 4.dp.toPx()),
-                            size = Size(armW, armH),
-                            cornerRadius = pillCorner
-                        )
-                        drawRoundRect(
-                            color = cArms,
-                            topLeft = Offset(backCx + torsoW * 0.62f - armW / 2f, torsoTop + shoulderR + 4.dp.toPx()),
-                            size = Size(armW, armH),
-                            cornerRadius = pillCorner
-                        )
-
-                        // Isquiotibiais / Posterior de Coxa
-                        drawRoundRect(
-                            color = cLegs,
-                            topLeft = Offset(backCx - legW - 3.dp.toPx(), legsTop),
-                            size = Size(legW, legH),
-                            cornerRadius = pillCorner
-                        )
-                        drawRoundRect(
-                            color = cLegs,
-                            topLeft = Offset(backCx + 3.dp.toPx(), legsTop),
-                            size = Size(legW, legH),
-                            cornerRadius = pillCorner
-                        )
+                        drawPath(path = quadCalvesFrontPath, color = cLegs.copy(alpha = 0.86f))
+                        drawPath(path = quadCalvesFrontPath, color = Color.White.copy(alpha = 0.20f), style = outlineStroke)
+                        drawPath(path = glutesHamsBackPath, color = cLegs.copy(alpha = 0.86f))
+                        drawPath(path = glutesHamsBackPath, color = Color.White.copy(alpha = 0.20f), style = outlineStroke)
                     }
                 }
         )
@@ -438,9 +637,47 @@ fun AnatomicalMuscleFatigueMap(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceAround
         ) {
-            Text("ANTERIOR (Push / Core)", color = LifeOsTheme.TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-            Text("POSTERIOR (Pull / Dorsal)", color = LifeOsTheme.TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            Text("ANTERIOR · PUSH & CORE", color = LifeOsTheme.TextPrimary, fontSize = 10.5.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.6.sp)
+            Text("POSTERIOR · PULL & CADEIA", color = LifeOsTheme.TextPrimary, fontSize = 10.5.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.6.sp)
         }
+
+        Spacer(modifier = Modifier.height(10.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            RecoveryScalePill("Fadiga Aguda", LifeOsTheme.RedExpense)
+            RecoveryScalePill("Síntese 48h", LifeOsTheme.AmberFocus)
+            RecoveryScalePill("100% Pronto", LifeOsTheme.GreenHealth)
+        }
+    }
+}
+
+@Composable
+private fun RecoveryScalePill(label: String, color: Color) {
+    Row(
+        modifier = Modifier
+            .clip(CircleShape)
+            .background(color.copy(alpha = 0.10f))
+            .border(1.dp, color.copy(alpha = 0.28f), CircleShape)
+            .padding(horizontal = 9.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(6.dp)
+                .clip(CircleShape)
+                .background(color)
+        )
+        Spacer(modifier = Modifier.width(5.dp))
+        Text(
+            text = label,
+            color = color,
+            fontSize = 9.5.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            softWrap = false
+        )
     }
 }
 
@@ -455,16 +692,16 @@ fun ChronoNightingaleWheel24h(
     hourlyHexColors24: List<String>,
     currentHour24: Int,
     caffeineCutoffHour: Int = 14,
-    modifier: Modifier = Modifier.size(210.dp)
+    modifier: Modifier = Modifier.size(214.dp)
 ) {
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
         Spacer(
             modifier = Modifier
-                .size(192.dp)
+                .size(194.dp)
                 .drawWithCache {
                     val center = Offset(size.width / 2f, size.height / 2f)
                     val maxR = size.minDimension / 2f - 6.dp.toPx()
-                    val innerR = maxR * 0.28f
+                    val innerR = maxR * 0.30f
                     val sweepPerHour = (360f / 24f) - 2.2f
 
                     val petalColors = Array(24) { h ->
@@ -477,7 +714,6 @@ fun ChronoNightingaleWheel24h(
                         innerR + (maxR - innerR) * frac
                     }
 
-                    // Ponteiro da hora atual e linha de Corte de Cafeína (14:00)
                     val nowAngleRad = Math.toRadians((-90f + currentHour24 * 15f + 7.5f).toDouble())
                     val nowEnd = Offset(
                         x = center.x + (cos(nowAngleRad) * (maxR + 4.dp.toPx())).toFloat(),
@@ -508,7 +744,7 @@ fun ChronoNightingaleWheel24h(
                             val c = petalColors[h]
                             val isNow = h == currentHour24
                             drawArc(
-                                color = c.copy(alpha = if (isNow) 0.95f else 0.56f),
+                                color = c.copy(alpha = if (isNow) 0.96f else 0.58f),
                                 startAngle = startAngle,
                                 sweepAngle = sweepPerHour,
                                 useCenter = true,
@@ -517,7 +753,6 @@ fun ChronoNightingaleWheel24h(
                             )
                         }
 
-                        // Linha vermelha tracejada do Corte Exato de Cafeína (14:00)
                         drawLine(
                             color = LifeOsTheme.RedExpense,
                             start = center,
@@ -526,7 +761,6 @@ fun ChronoNightingaleWheel24h(
                             pathEffect = dash
                         )
 
-                        // Ponteiro branco da Hora Atual
                         drawLine(
                             color = Color.White,
                             start = center,
@@ -535,13 +769,13 @@ fun ChronoNightingaleWheel24h(
                             cap = StrokeCap.Round
                         )
 
-                        drawCircle(color = Color(0xFF060608), radius = innerR, center = center)
-                        drawCircle(color = LifeOsTheme.BorderSubtle, radius = innerR, center = center, style = ringStroke)
+                        drawCircle(color = Color(0xFF07080C), radius = innerR, center = center)
+                        drawCircle(color = LifeOsTheme.BorderSpecular, radius = innerR, center = center, style = ringStroke)
                     }
                 }
         )
 
-        Box(modifier = Modifier.size(210.dp)) {
+        Box(modifier = Modifier.size(214.dp)) {
             Text("00h", color = LifeOsTheme.TextMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.align(Alignment.TopCenter))
             Text("12h", color = LifeOsTheme.TextMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.align(Alignment.BottomCenter))
             Text("18h", color = LifeOsTheme.GreenHealth, fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.align(Alignment.CenterStart))
@@ -555,15 +789,13 @@ fun ChronoNightingaleWheel24h(
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Black
             )
-            Text("BIO", color = LifeOsTheme.AmberFocus, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+            Text("BIO", color = LifeOsTheme.AmberFocus, fontSize = 8.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp)
         }
     }
 }
 
 /**
  * Gráfico #13 da Suíte 120 FPS — Burndown de Conhecimento com "Cone de Incerteza" (Pilar 6.13 & Pilar 7.3).
- * Exibe a queima real de páginas/matérias e o cone sombreado matemático (otimista p10, realista p50 e
- * conservador p90) usando Paths cacheados (Zero-GC).
  */
 @Composable
 fun KnowledgeBurndownConeChart(
@@ -670,12 +902,13 @@ fun KnowledgeBurndownConeChart(
                         }
 
                         drawPath(path = conePolygonPath, brush = coneBrush)
-                        drawPath(path = optimisticPath, color = LifeOsTheme.GreenHealth.copy(alpha = 0.75f), style = boundStroke)
-                        drawPath(path = conservativePath, color = LifeOsTheme.AmberFocus.copy(alpha = 0.75f), style = boundStroke)
+                        drawPath(path = optimisticPath, color = LifeOsTheme.GreenHealth.copy(alpha = 0.78f), style = boundStroke)
+                        drawPath(path = conservativePath, color = LifeOsTheme.AmberFocus.copy(alpha = 0.78f), style = boundStroke)
                         drawPath(path = realisticPath, color = LifeOsTheme.CyanFinance, style = dashStroke)
                         drawPath(path = historyPath, color = Color.White, style = solidStroke)
 
-                        drawCircle(color = LifeOsTheme.CyanFinance, radius = 5.dp.toPx(), center = pivotPoint)
+                        drawCircle(color = LifeOsTheme.CyanFinance.copy(alpha = 0.25f), radius = 9.dp.toPx(), center = pivotPoint)
+                        drawCircle(color = LifeOsTheme.CyanFinance, radius = 4.8.dp.toPx(), center = pivotPoint)
                     }
                 }
         )
@@ -685,9 +918,9 @@ fun KnowledgeBurndownConeChart(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("Início", color = LifeOsTheme.TextMuted, fontSize = 10.sp)
+            Text("Início Edital", color = LifeOsTheme.TextMuted, fontSize = 10.sp)
             Text("● Hoje", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-            Text("Cone Otimista / Conservador →", color = LifeOsTheme.CyanFinance, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+            Text("Cone p10 · p50 · p90 →", color = LifeOsTheme.CyanFinance, fontSize = 10.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -699,7 +932,7 @@ fun KnowledgeBurndownConeChart(
  */
 @Composable
 fun HexagonalRpgRadarChart(
-    normalizedAttributes6: List<Float>, // [Força, Intelecto, Finanças, Resiliência, Foco, Cultura]
+    normalizedAttributes6: List<Float>,
     attributeScores0to100: List<Int>,
     modifier: Modifier = Modifier.fillMaxWidth()
 ) {
@@ -707,10 +940,10 @@ fun HexagonalRpgRadarChart(
     val avatarPolyPath = remember { Path() }
     val labels = listOf("FORÇA", "INTELECTO", "FINANÇAS", "RESILIÊNCIA", "FOCO", "CULTURA")
 
-    Box(modifier = modifier.height(226.dp), contentAlignment = Alignment.Center) {
+    Box(modifier = modifier.height(232.dp), contentAlignment = Alignment.Center) {
         Spacer(
             modifier = Modifier
-                .size(182.dp)
+                .size(184.dp)
                 .drawWithCache {
                     val center = Offset(size.width / 2f, size.height / 2f)
                     val maxR = size.minDimension / 2f - 8.dp.toPx()
@@ -724,7 +957,6 @@ fun HexagonalRpgRadarChart(
                         )
                     }
 
-                    // Teia hexagonal concêntrica (33%, 66%, 100%) + raios axiais em um único Path cacheado
                     gridWebPath.reset()
                     for (ring in 1..3) {
                         val frac = ring / 3f
@@ -741,7 +973,7 @@ fun HexagonalRpgRadarChart(
                     }
 
                     val activePts = Array(6) { v ->
-                        val frac = normalizedAttributes6.getOrElse(v) { 0.65f }.coerceIn(0.15f, 1f)
+                        val frac = normalizedAttributes6.getOrElse(v) { 0.65f }.coerceIn(0.18f, 1f)
                         hexVertex(v, frac)
                     }
 
@@ -753,64 +985,60 @@ fun HexagonalRpgRadarChart(
 
                     val polyFill = Brush.radialGradient(
                         colors = listOf(
-                            LifeOsTheme.PurpleStudy.copy(alpha = 0.45f),
+                            LifeOsTheme.PurpleStudy.copy(alpha = 0.48f),
                             LifeOsTheme.GreenHealth.copy(alpha = 0.28f)
                         ),
                         center = center,
                         radius = maxR
                     )
                     val webStroke = Stroke(width = 1.dp.toPx())
-                    val polyStroke = Stroke(width = 2.5.dp.toPx(), join = StrokeJoin.Round)
+                    val polyStroke = Stroke(width = 2.6.dp.toPx(), join = StrokeJoin.Round)
                     val dotR = 4.2.dp.toPx()
 
                     onDrawBehind {
-                        drawPath(path = gridWebPath, color = LifeOsTheme.BorderSubtle, style = webStroke)
+                        drawPath(path = gridWebPath, color = LifeOsTheme.BorderSpecular, style = webStroke)
                         drawPath(path = avatarPolyPath, brush = polyFill)
                         drawPath(path = avatarPolyPath, color = LifeOsTheme.GreenHealth, style = polyStroke)
 
                         activePts.forEach { pt ->
+                            drawCircle(color = LifeOsTheme.GreenHealth.copy(alpha = 0.30f), radius = 7.5.dp.toPx(), center = pt)
                             drawCircle(color = Color.White, radius = dotR, center = pt)
                         }
                     }
                 }
         )
 
-        // Rótulos nos 6 vértices do Hexágono RPG
-        Box(modifier = Modifier.fillMaxWidth().height(226.dp)) {
+        Box(modifier = Modifier.fillMaxWidth().height(232.dp)) {
             val s = attributeScores0to100
-            Text(
-                text = "${labels[0]} ${s.getOrElse(0) { 80 }}",
-                color = LifeOsTheme.GreenHealth,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Black,
+            LuxuryStatBadge(
+                label = "${labels[0]} ${s.getOrElse(0) { 80 }}",
+                accent = LifeOsTheme.GreenHealth,
                 modifier = Modifier.align(Alignment.TopCenter)
             )
-            Text(
-                text = "${labels[3]} ${s.getOrElse(3) { 85 }}",
-                color = LifeOsTheme.OrangeStreak,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Black,
+            LuxuryStatBadge(
+                label = "${labels[3]} ${s.getOrElse(3) { 85 }}",
+                accent = LifeOsTheme.OrangeStreak,
                 modifier = Modifier.align(Alignment.BottomCenter)
             )
             Column(
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
-                    .padding(end = 6.dp),
-                verticalArrangement = Arrangement.spacedBy(76.dp),
+                    .padding(end = 2.dp),
+                verticalArrangement = Arrangement.spacedBy(78.dp),
                 horizontalAlignment = Alignment.End
             ) {
-                Text("${labels[1]} ${s.getOrElse(1) { 84 }}", color = LifeOsTheme.PurpleStudy, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                Text("${labels[2]} ${s.getOrElse(2) { 78 }}", color = LifeOsTheme.CyanFinance, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                LuxuryStatBadge("${labels[1]} ${s.getOrElse(1) { 84 }}", LifeOsTheme.PurpleStudy)
+                LuxuryStatBadge("${labels[2]} ${s.getOrElse(2) { 78 }}", LifeOsTheme.CyanFinance)
             }
             Column(
                 modifier = Modifier
                     .align(Alignment.CenterStart)
-                    .padding(start = 6.dp),
-                verticalArrangement = Arrangement.spacedBy(76.dp),
+                    .padding(start = 2.dp),
+                verticalArrangement = Arrangement.spacedBy(78.dp),
                 horizontalAlignment = Alignment.Start
             ) {
-                Text("${labels[5]} ${s.getOrElse(5) { 76 }}", color = LifeOsTheme.AmberFocus, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                Text("${labels[4]} ${s.getOrElse(4) { 82 }}", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                LuxuryStatBadge("${labels[5]} ${s.getOrElse(5) { 76 }}", LifeOsTheme.AmberFocus)
+                LuxuryStatBadge("${labels[4]} ${s.getOrElse(4) { 82 }}", Color.White)
             }
         }
     }
