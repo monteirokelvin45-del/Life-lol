@@ -324,7 +324,7 @@ fun HomeScreen(
                 }
 
                 // Faixa Executiva "Pulso Vital Instantâneo" (Caixa · Fisiologia · Ebbinghaus)
-                val vaultBalance = state.financialOverview?.totalBalance ?: 42100.0
+                val vaultBalance = state.financialOverview?.netBalanceMonth ?: 42100.0
                 val vaultCompact = if (vaultBalance >= 1000.0) {
                     String.format(Locale.forLanguageTag("pt-MZ"), "%.1fk %s", vaultBalance / 1000.0, state.financialOverview?.currencyCode ?: "MZN")
                 } else {
