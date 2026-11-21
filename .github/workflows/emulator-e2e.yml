@@ -5,6 +5,7 @@ on:
     branches: [ "**" ]
     paths-ignore:
       - "docs/emulator-screenshots/**"
+      - "releases/**"
   workflow_dispatch:
 
 permissions:
@@ -12,7 +13,7 @@ permissions:
 
 jobs:
   emulator-e2e:
-    name: Boot Android Emulator, Test All Tabs & Capture OLED Screenshots
+    name: Boot Android Emulator, Test All Tabs, Package APK & Capture OLED Screenshots
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
@@ -36,8 +37,8 @@ jobs:
         with:
           gradle-version: "8.5"
 
-      - name: Assemble Debug APK
-        run: gradle :app:assembleDebug --no-daemon --stacktrace
+      - name: Run Unit Tests & Assemble Signed Installable APK
+        run: gradle testDebugUnitTest :app:assembleDebug --no-daemon --stacktrace
 
       - name: Enable KVM Hardware Acceleration
         run: |
@@ -56,19 +57,43 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: bash scripts/run_emulator_e2e.sh
 
-      - name: Upload Emulator Screenshots Artifact
+      - name: Package Verified APK & Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p releases
+          cp app/build/outputs/apk/debug/app-debug.apk releases/LifeOS-OLED-120fps.apk
+          sha256sum releases/LifeOS-OLED-120fps.apk > releases/LifeOS-OLED-120fps.apk.sha256
+          ls -lh releases/
+          TAG="v1.1.0-oled"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" releases/LifeOS-OLED-120fps.apk releases/LifeOS-OLED-120fps.apk.sha256 --clobber
+          else
+            gh release create "$TAG" \
+              releases/LifeOS-OLED-120fps.apk \
+              releases/LifeOS-OLED-120fps.apk.sha256 \
+              --target "${{ github.ref_name }}" \
+              --title "Life OS v1.1.0 — Studio OLED Edition (120 FPS Zero-GC + SQLCipher AES-256)" \
+              --notes "APK Android compilado, assinado para instalação direta e validado em Emulador Android 13 (API 33) sem crashes."
+          fi
+
+      - name: Upload Emulator Screenshots & Verified APK Artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: life-os-emulator-screenshots
-          path: docs/emulator-screenshots/*.png
+          name: life-os-verified-bundle
+          path: |
+            docs/emulator-screenshots/*.png
+            releases/LifeOS-OLED-120fps.apk
+            releases/LifeOS-OLED-120fps.apk.sha256
 
-      - name: Commit Real Emulator Screenshots to Branch
+      - name: Commit Verified APK & Real Emulator Screenshots to Branch
         run: |
           git config user.name "Life OS QA Bot"
           git config user.email "qa@lifeos.local"
-          git add docs/emulator-screenshots/*.png
+          git pull --rebase origin "${{ github.ref_name }}" || true
+          git add docs/emulator-screenshots/*.png releases/LifeOS-OLED-120fps.apk releases/LifeOS-OLED-120fps.apk.sha256
           if ! git diff --cached --quiet; then
-            git commit -m "docs(qa): add real Android emulator E2E screenshots [skip ci]"
+            git commit -m "release(apk): package verified LifeOS-OLED-120fps.apk & E2E screenshots [skip ci]"
             git push origin HEAD:${{ github.ref_name }}
           fi

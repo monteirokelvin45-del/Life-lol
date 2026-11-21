@@ -32,7 +32,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -41,6 +43,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -79,9 +83,12 @@ fun LifeOsAppShell(
     onConsumedNavRoute: () -> Unit = {}
 ) {
     val navController = rememberNavController()
+    val haptics = LocalHapticFeedback.current
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route ?: LifeOsDestination.HOME.route
     val activeDest = LifeOsDestination.entries.find { it.route == currentRoute } ?: LifeOsDestination.HOME
+    var homeScrollToTopSignal by remember { mutableIntStateOf(0) }
+
     val auroraColor by animateColorAsState(
         targetValue = activeDest.accent,
         animationSpec = tween(durationMillis = 480),
@@ -99,6 +106,7 @@ fun LifeOsAppShell(
                     restoreState = true
                 }
             }
+            homeScrollToTopSignal++
         }
     }
 
@@ -113,6 +121,9 @@ fun LifeOsAppShell(
                     launchSingleTop = true
                     restoreState = true
                 }
+                if (requestedNavRoute == LifeOsDestination.HOME.route) {
+                    homeScrollToTopSignal++
+                }
             }
             onConsumedNavRoute()
         }
@@ -124,12 +135,20 @@ fun LifeOsAppShell(
             FloatingLuxuryGlassDock(
                 currentRoute = currentRoute,
                 onSelect = { dest ->
-                    navController.navigate(dest.route) {
-                        popUpTo(navController.graph.findStartDestination().id) {
-                            saveState = true
+                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    if (dest == LifeOsDestination.HOME && currentRoute == LifeOsDestination.HOME.route) {
+                        homeScrollToTopSignal++
+                    } else {
+                        navController.navigate(dest.route) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
                         }
-                        launchSingleTop = true
-                        restoreState = true
+                        if (dest == LifeOsDestination.HOME) {
+                            homeScrollToTopSignal++
+                        }
                     }
                 }
             )
@@ -164,6 +183,7 @@ fun LifeOsAppShell(
                         viewModel = hiltViewModel(),
                         incomingSharedUri = incomingSharedUri,
                         incomingSharedText = incomingSharedText,
+                        scrollToTopSignal = homeScrollToTopSignal,
                         onConsumedSharedPayload = onConsumedSharedPayload
                     )
                 }

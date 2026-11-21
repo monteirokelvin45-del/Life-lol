@@ -44,9 +44,10 @@ import com.lifeos.ui.theme.LifeOsTheme
 fun WeeklyGradientBarsChart(
     dailyValues: List<Float>,
     targetLineRatio: Float = 0.68f,
+    labels: List<String> = listOf("S", "T", "Q", "Q", "S", "S", "D"),
     modifier: Modifier = Modifier.fillMaxWidth()
 ) {
-    val labels = listOf("S", "T", "Q", "Q", "S", "S", "D")
+    val safeLabels = if (labels.size >= 7) labels.take(7) else listOf("S", "T", "Q", "Q", "S", "S", "D")
     val safeValues = if (dailyValues.size >= 7) dailyValues.take(7) else listOf(0.75f, 0.70f, 0.74f, 0.72f, 0.88f, 0.73f, 0.65f)
     val peakIdx = safeValues.indices.maxByOrNull { safeValues[it] } ?: 4
 
@@ -110,7 +111,7 @@ fun WeeklyGradientBarsChart(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceAround
         ) {
-            labels.forEach { ch ->
+            safeLabels.forEach { ch ->
                 Text(ch, color = LifeOsTheme.TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Medium)
             }
         }

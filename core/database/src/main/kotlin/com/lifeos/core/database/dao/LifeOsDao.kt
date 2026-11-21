@@ -84,6 +84,9 @@ interface LifeOsDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertHabitLog(log: HabitLogEntity)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertHabitLogs(logs: List<HabitLogEntity>)
+
     @Query(
         """
         SELECT * FROM habit_logs

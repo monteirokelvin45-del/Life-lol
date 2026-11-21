@@ -45,6 +45,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -61,11 +63,23 @@ import com.lifeos.ui.components.WeeklyGradientBarsChart
 import com.lifeos.ui.components.WeeklyTrendDotsChart
 import com.lifeos.ui.theme.LifeOsTheme
 
+private data class WorkoutPeriodTelemetry(
+    val volumeTitle: String,
+    val volumeHeadline: String,
+    val volumeDeltaBadge: String,
+    val barValues: List<Float>,
+    val barLabels: List<String>,
+    val overloadHeadline: String,
+    val overloadDeltaBadge: String,
+    val overloadPoints: List<Float>
+)
+
 @Composable
 fun WorkoutScreen(
     viewModel: WorkoutViewModel
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val haptics = LocalHapticFeedback.current
     val limeAccent = Color(0xFFB7F34D)
 
     val calendarPermissionLauncher = rememberLauncherForActivityResult(
@@ -312,6 +326,7 @@ fun WorkoutScreen(
 
                         Button(
                             onClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 val nextCount = if (ex.completedSetsToday >= ex.targetSets) 0 else ex.completedSetsToday + 1
                                 viewModel.onIntent(
                                     WorkoutIntent.LogExerciseSet(
@@ -353,6 +368,50 @@ fun WorkoutScreen(
         item {
             var selectedPeriod by remember { mutableStateOf("Semana") }
             val periods = listOf("Semana", "Mês", "3 Meses", "Ano")
+            val telemetry = remember(selectedPeriod) {
+                when (selectedPeriod) {
+                    "Mês" -> WorkoutPeriodTelemetry(
+                        volumeTitle = "Volume Mensal Ativo",
+                        volumeHeadline = "5.890 kcal acum.",
+                        volumeDeltaBadge = "↑ 14% vs ant.",
+                        barValues = listOf(1280f, 1410f, 1520f, 1680f, 1590f, 1740f, 1890f),
+                        barLabels = listOf("S1", "S2", "S3", "S4", "S5", "S6", "S7"),
+                        overloadHeadline = "+16,5 kg pico",
+                        overloadDeltaBadge = "+4,5 kg",
+                        overloadPoints = listOf(11.5f, 12.0f, 13.0f, 14.0f, 15.0f, 15.5f, 16.5f)
+                    )
+                    "3 Meses" -> WorkoutPeriodTelemetry(
+                        volumeTitle = "Volume Trimestral Ativo",
+                        volumeHeadline = "18.400 kcal acum.",
+                        volumeDeltaBadge = "↑ 22% vs ant.",
+                        barValues = listOf(4900f, 5200f, 5450f, 5800f, 6150f, 6420f, 6890f),
+                        barLabels = listOf("Q1", "Q2", "Q3", "Q4", "Q5", "Q6", "Q7"),
+                        overloadHeadline = "+22,5 kg pico",
+                        overloadDeltaBadge = "+10,5 kg",
+                        overloadPoints = listOf(12f, 13.5f, 15f, 16.5f, 18.5f, 20.5f, 22.5f)
+                    )
+                    "Ano" -> WorkoutPeriodTelemetry(
+                        volumeTitle = "Volume Anual Ativo",
+                        volumeHeadline = "74.200 kcal acum.",
+                        volumeDeltaBadge = "↑ 38% anual",
+                        barValues = listOf(4600f, 5100f, 5600f, 5950f, 6400f, 6950f, 7450f),
+                        barLabels = listOf("Jan", "Mar", "Mai", "Jul", "Set", "Out", "Nov"),
+                        overloadHeadline = "+32,0 kg pico",
+                        overloadDeltaBadge = "+22,0 kg",
+                        overloadPoints = listOf(10f, 13f, 16.5f, 20f, 24f, 28.5f, 32f)
+                    )
+                    else -> WorkoutPeriodTelemetry(
+                        volumeTitle = "Volume Semanal Ativo",
+                        volumeHeadline = "1.420 kcal média",
+                        volumeDeltaBadge = "↑ 8% vs ant.",
+                        barValues = listOf(1400f, 1320f, 1450f, 1380f, 1820f, 1410f, 1260f),
+                        barLabels = listOf("Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"),
+                        overloadHeadline = "+12,0 kg média",
+                        overloadDeltaBadge = "+2,0 kg",
+                        overloadPoints = listOf(10f, 10f, 10.5f, 11f, 11.5f, 12f, 12f)
+                    )
+                }
+            }
 
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Spacer(modifier = Modifier.height(6.dp))
@@ -375,7 +434,10 @@ fun WorkoutScreen(
                                 .weight(1f)
                                 .clip(CircleShape)
                                 .background(if (active) limeAccent else Color.Transparent)
-                                .clickable { selectedPeriod = p }
+                                .clickable {
+                                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    selectedPeriod = p
+                                }
                                 .padding(vertical = 8.dp),
                             contentAlignment = Alignment.Center
                         ) {
@@ -441,14 +503,15 @@ fun WorkoutScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("Volume Semanal Ativo", color = LifeOsTheme.TextSecondary, fontSize = 12.sp)
-                            Text("1.420 kcal média", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Black)
+                            Text(telemetry.volumeTitle, color = LifeOsTheme.TextSecondary, fontSize = 12.sp)
+                            Text(telemetry.volumeHeadline, color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Black)
                         }
-                        LuxuryStatBadge(label = "↑ 8% vs ant.", accent = limeAccent)
+                        LuxuryStatBadge(label = telemetry.volumeDeltaBadge, accent = limeAccent)
                     }
                     Spacer(modifier = Modifier.height(12.dp))
                     WeeklyGradientBarsChart(
-                        dailyValues = listOf(1400f, 1320f, 1450f, 1380f, 1820f, 1410f, 1260f)
+                        dailyValues = telemetry.barValues,
+                        labels = telemetry.barLabels
                     )
                 }
 
@@ -460,13 +523,13 @@ fun WorkoutScreen(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text("Progressão de Carga Extra", color = LifeOsTheme.TextSecondary, fontSize = 12.sp)
-                            Text("+12,0 kg média", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Black)
+                            Text(telemetry.overloadHeadline, color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Black)
                         }
-                        LuxuryStatBadge(label = "+2,0 kg", accent = limeAccent)
+                        LuxuryStatBadge(label = telemetry.overloadDeltaBadge, accent = limeAccent)
                     }
                     Spacer(modifier = Modifier.height(10.dp))
                     WeeklyTrendDotsChart(
-                        points = listOf(10f, 10f, 10.5f, 11f, 11.5f, 12f, 12f),
+                        points = telemetry.overloadPoints,
                         lineColor = limeAccent
                     )
                 }

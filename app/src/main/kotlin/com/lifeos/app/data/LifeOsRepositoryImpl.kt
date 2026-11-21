@@ -822,23 +822,25 @@ class LifeOsRepositoryImpl @Inject constructor(
             )
         )
 
+        val initialLogsBatch = ArrayList<HabitLogEntity>(380)
         for (offset in 180 downTo 1) {
             val day = today.minusDays(offset.toLong())
             val epoch = day.toEpochDay()
             val logMillis = day.atTime(7, 30).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
             if (offset % 4 != 0) {
-                dao.insertHabitLog(HabitLogEntity(habitId = h1, epochDay = epoch, completed = true, loggedAtMillis = logMillis + 37_800_000L))
+                initialLogsBatch.add(HabitLogEntity(habitId = h1, epochDay = epoch, completed = true, loggedAtMillis = logMillis + 37_800_000L))
             }
             if (offset % 3 != 0) {
-                dao.insertHabitLog(HabitLogEntity(habitId = h2, epochDay = epoch, completed = true, loggedAtMillis = logMillis + 18_000_000L))
+                initialLogsBatch.add(HabitLogEntity(habitId = h2, epochDay = epoch, completed = true, loggedAtMillis = logMillis + 18_000_000L))
             }
             if (offset % 5 != 0) {
-                dao.insertHabitLog(HabitLogEntity(habitId = h3, epochDay = epoch, completed = true, loggedAtMillis = logMillis))
+                initialLogsBatch.add(HabitLogEntity(habitId = h3, epochDay = epoch, completed = true, loggedAtMillis = logMillis))
             }
         }
         val morningTodayMillis = today.atTime(7, 25).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
-        dao.insertHabitLog(HabitLogEntity(habitId = h2, epochDay = today.toEpochDay(), completed = true, loggedAtMillis = morningTodayMillis + 3_600_000L, note = "Primeiros 2L concluídos"))
-        dao.insertHabitLog(HabitLogEntity(habitId = h3, epochDay = today.toEpochDay(), completed = true, loggedAtMillis = morningTodayMillis, note = "18 pág. em foco profundo"))
+        initialLogsBatch.add(HabitLogEntity(habitId = h2, epochDay = today.toEpochDay(), completed = true, loggedAtMillis = morningTodayMillis + 3_600_000L, note = "Primeiros 2L concluídos"))
+        initialLogsBatch.add(HabitLogEntity(habitId = h3, epochDay = today.toEpochDay(), completed = true, loggedAtMillis = morningTodayMillis, note = "18 pág. em foco profundo"))
+        dao.insertHabitLogs(initialLogsBatch)
 
         dao.upsertGhostSquadMembers(
             listOf(

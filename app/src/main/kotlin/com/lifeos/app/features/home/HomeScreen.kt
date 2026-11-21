@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -65,6 +66,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -93,11 +98,20 @@ fun HomeScreen(
     viewModel: HomeViewModel,
     incomingSharedUri: Uri? = null,
     incomingSharedText: String? = null,
+    scrollToTopSignal: Int = 0,
     onConsumedSharedPayload: () -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val haptics = LocalHapticFeedback.current
+    val listState = rememberLazyListState()
     var showPortalModal by remember { mutableStateOf(false) }
     var showSquadModal by remember { mutableStateOf(false) }
+
+    LaunchedEffect(scrollToTopSignal) {
+        if (scrollToTopSignal > 0) {
+            listState.scrollToItem(0)
+        }
+    }
 
     LaunchedEffect(incomingSharedUri, incomingSharedText) {
         when {
@@ -136,6 +150,7 @@ fun HomeScreen(
     val topStreak = state.habits.maxOfOrNull { it.currentStreak } ?: 0
 
     LazyColumn(
+        state = listState,
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Transparent),
@@ -194,10 +209,16 @@ fun HomeScreen(
 
                         Row(
                             modifier = Modifier
+                                .semantics(mergeDescendants = true) {
+                                    contentDescription = "Portal IA"
+                                }
                                 .clip(CircleShape)
                                 .background(LifeOsTheme.PurpleStudy.copy(alpha = 0.18f))
                                 .border(1.dp, LifeOsTheme.PurpleStudy.copy(alpha = 0.48f), CircleShape)
-                                .clickable { showPortalModal = true }
+                                .clickable {
+                                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    showPortalModal = true
+                                }
                                 .padding(horizontal = 12.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -283,7 +304,10 @@ fun HomeScreen(
                                 .let { m ->
                                     if (active) m.border(1.dp, LifeOsTheme.BorderSpecular, CircleShape) else m
                                 }
-                                .clickable { viewModel.onIntent(HomeIntent.SelectTimeContext(ctx)) }
+                                .clickable {
+                                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    viewModel.onIntent(HomeIntent.SelectTimeContext(ctx))
+                                }
                                 .padding(vertical = 7.dp),
                             contentAlignment = Alignment.Center
                         ) {
@@ -297,6 +321,40 @@ fun HomeScreen(
                             )
                         }
                     }
+                }
+
+                // Faixa Executiva "Pulso Vital Instantâneo" (Caixa · Fisiologia · Ebbinghaus)
+                val vaultBalance = state.financialOverview?.totalBalance ?: 42100.0
+                val vaultCompact = if (vaultBalance >= 1000.0) {
+                    String.format(Locale.forLanguageTag("pt-MZ"), "%.1fk %s", vaultBalance / 1000.0, state.financialOverview?.currencyCode ?: "MZN")
+                } else {
+                    String.format(Locale.forLanguageTag("pt-MZ"), "%.0f %s", vaultBalance, state.financialOverview?.currencyCode ?: "MZN")
+                }
+                val doneEx = state.todayWorkout?.completedExercisesCount ?: 3
+                val totalEx = (state.todayWorkout?.exercises?.size ?: 4).coerceAtLeast(1)
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    ExecutivePulsePill(
+                        icon = Icons.Rounded.AccountBalanceWallet,
+                        label = vaultCompact,
+                        accent = LifeOsTheme.CyanFinance,
+                        modifier = Modifier.weight(1f)
+                    )
+                    ExecutivePulsePill(
+                        icon = Icons.Rounded.FitnessCenter,
+                        label = "Treino $doneEx/$totalEx",
+                        accent = LifeOsTheme.GreenHealth,
+                        modifier = Modifier.weight(1f)
+                    )
+                    ExecutivePulsePill(
+                        icon = Icons.Rounded.Psychology,
+                        label = "${state.dueStudies.size} revisões",
+                        accent = LifeOsTheme.PurpleStudy,
+                        modifier = Modifier.weight(1f)
+                    )
                 }
             }
         }
@@ -399,15 +457,15 @@ fun HomeScreen(
 
         // 2.5. Holofote de Streak & Consistência Semanal
         item {
-            val firstHabit = state.habits.firstOrNull()
             val lastColFlags = (0..6).map { rowIdx ->
-                val row = firstHabit?.heatmapMatrix?.getOrNull(rowIdx)
-                (row?.lastOrNull() ?: 0f) > 0f
+                state.habits.any { h ->
+                    (h.heatmapMatrix.getOrNull(rowIdx)?.lastOrNull() ?: 0f) > 0f
+                }
             }
             val pct = if (state.habits.isNotEmpty()) {
                 state.habits.map { it.goalProgressPercent }.average().roundToInt()
             } else {
-                68
+                78
             }
             StreakWeekSpotlightBanner(
                 streakDays = topStreak,
@@ -1160,3 +1218,38 @@ private fun ConfirmSistemaPreviewDialog(
         }
     )
 }
+
+@Composable
+private fun ExecutivePulsePill(
+    icon: ImageVector,
+    label: String,
+    accent: Color,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .clip(CircleShape)
+            .background(LifeOsTheme.SurfaceDark)
+            .border(1.dp, accent.copy(alpha = 0.28f), CircleShape)
+            .padding(horizontal = 9.dp, vertical = 7.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = accent,
+            modifier = Modifier.size(13.dp)
+        )
+        Spacer(modifier = Modifier.width(5.dp))
+        Text(
+            text = label,
+            color = Color.White,
+            fontSize = 10.5.sp,
+            fontWeight = FontWeight.ExtraBold,
+            maxLines = 1,
+            softWrap = false
+        )
+    }
+}
+

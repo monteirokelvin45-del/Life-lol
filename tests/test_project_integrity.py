@@ -189,3 +189,41 @@ def test_all_14_luxury_canvas_charts_present_and_zero_gc_draw_with_cache():
             tail = src[match.end() : match.end() + 1800]
             assert "Path()" not in tail, f"Path() allocated inside onDrawBehind in {p.name}"
 
+
+def test_cold_boot_sqlcipher_uses_single_batch_insert_transaction():
+    dao_src = (
+        REPO_ROOT / "core/database/src/main/kotlin/com/lifeos/core/database/dao/LifeOsDao.kt"
+    ).read_text(encoding="utf-8")
+    repo_src = (
+        REPO_ROOT / "app/src/main/kotlin/com/lifeos/app/data/LifeOsRepositoryImpl.kt"
+    ).read_text(encoding="utf-8")
+    assert "suspend fun insertHabitLogs(logs: List<HabitLogEntity>)" in dao_src
+    assert "dao.insertHabitLogs(initialLogsBatch)" in repo_src
+    seed_block = repo_src.split("seedInitialShowcaseDataIfEmpty")[1]
+    assert "dao.insertHabitLog(" not in seed_block, (
+        "seedInitialShowcaseDataIfEmpty must batch-insert HabitLogEntity rows via insertHabitLogs"
+    )
+
+
+def test_dock_scroll_to_top_and_executive_pulse_strip_wired():
+    shell_src = (
+        REPO_ROOT / "app/src/main/kotlin/com/lifeos/app/ui/LifeOsAppShell.kt"
+    ).read_text(encoding="utf-8")
+    home_src = (
+        REPO_ROOT / "app/src/main/kotlin/com/lifeos/app/features/home/HomeScreen.kt"
+    ).read_text(encoding="utf-8")
+    assert "homeScrollToTopSignal" in shell_src
+    assert "rememberLazyListState()" in home_src
+    assert "listState.scrollToItem(0)" in home_src
+    assert "ExecutivePulsePill(" in home_src
+
+
+def test_workout_dynamic_multi_period_telemetry_wired():
+    workout_src = (
+        REPO_ROOT / "app/src/main/kotlin/com/lifeos/app/features/workout/WorkoutScreen.kt"
+    ).read_text(encoding="utf-8")
+    assert "WorkoutPeriodTelemetry(" in workout_src
+    assert "labels = telemetry.barLabels" in workout_src
+    assert "points = telemetry.overloadPoints" in workout_src
+
+
