@@ -152,8 +152,11 @@ fun HomeScreen(
                 ) {
                     EyebrowCapsule(
                         text = state.timeContext.badgeLabel,
-                        accent = LifeOsTheme.GreenHealth
+                        accent = LifeOsTheme.GreenHealth,
+                        modifier = Modifier.weight(1f, fill = false)
                     )
+
+                    Spacer(modifier = Modifier.width(8.dp))
 
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -176,7 +179,7 @@ fun HomeScreen(
                                     .onFailure { showPortalModal = true }
                             },
                             modifier = Modifier
-                                .size(34.dp)
+                                .size(36.dp)
                                 .clip(CircleShape)
                                 .background(LifeOsTheme.SurfaceElevated)
                                 .border(1.dp, LifeOsTheme.BorderSubtle, CircleShape)
@@ -185,17 +188,17 @@ fun HomeScreen(
                                 imageVector = Icons.Rounded.Mic,
                                 contentDescription = "Portal por Voz",
                                 tint = LifeOsTheme.OrangeStreak,
-                                modifier = Modifier.size(16.dp)
+                                modifier = Modifier.size(17.dp)
                             )
                         }
 
                         Row(
                             modifier = Modifier
                                 .clip(CircleShape)
-                                .background(LifeOsTheme.PurpleStudy.copy(alpha = 0.16f))
-                                .border(1.dp, LifeOsTheme.PurpleStudy.copy(alpha = 0.45f), CircleShape)
+                                .background(LifeOsTheme.PurpleStudy.copy(alpha = 0.18f))
+                                .border(1.dp, LifeOsTheme.PurpleStudy.copy(alpha = 0.48f), CircleShape)
                                 .clickable { showPortalModal = true }
-                                .padding(horizontal = 11.dp, vertical = 7.dp),
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
@@ -215,37 +218,27 @@ fun HomeScreen(
                             )
                         }
 
-                        Row(
+                        IconButton(
+                            onClick = {
+                                documentPickerLauncher.launch(
+                                    arrayOf(
+                                        "application/pdf",
+                                        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                                        "text/*",
+                                        "image/*"
+                                    )
+                                )
+                            },
                             modifier = Modifier
+                                .size(36.dp)
                                 .clip(CircleShape)
                                 .background(LifeOsTheme.GreenHealth)
-                                .clickable {
-                                    documentPickerLauncher.launch(
-                                        arrayOf(
-                                            "application/pdf",
-                                            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                                            "text/*",
-                                            "image/*"
-                                        )
-                                    )
-                                }
-                                .padding(horizontal = 11.dp, vertical = 7.dp),
-                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
                                 imageVector = Icons.Rounded.UploadFile,
                                 contentDescription = "Importar PDF ou DOCX",
                                 tint = Color.Black,
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "Importar",
-                                color = Color.Black,
-                                fontSize = 11.5.sp,
-                                fontWeight = FontWeight.Black,
-                                maxLines = 1,
-                                softWrap = false
+                                modifier = Modifier.size(17.dp)
                             )
                         }
                     }

@@ -123,20 +123,23 @@ dismiss_system_anr_if_any
 echo "=== [3/7] Cold Booting com.lifeos.app/.MainActivity ==="
 adb logcat -c
 adb shell am start -W -n com.lifeos.app/.MainActivity
-sleep 6
+sleep 9
 check_no_crash "Initial Cold Boot + SQLCipher + Keystore + Seed"
 
 echo "=== [4/7] Capturing All 5 Tabs, 14 Zero-GC Charts & Pillar 5 Mechanics ==="
 # 1. Aba Hoje (Topo + Roda da Vida + Circadiano / Ghost Squad / RPG Radar)
 navigate_route "home"
+sleep 3
 capture_screen "01-hoje-dashboard.png"
 adb shell input swipe 540 1850 540 520 400
 sleep 2
 capture_screen "02-hoje-roda-da-vida.png"
-adb shell input swipe 540 1900 540 380 400
+adb shell input swipe 540 1900 540 340 400
 sleep 2
 capture_screen "14-hoje-circadiano-ghost-rpg.png"
-adb shell input swipe 540 1900 540 420 400
+adb shell input swipe 540 1900 540 320 400
+sleep 1
+adb shell input swipe 540 1750 540 650 400
 sleep 2
 capture_screen "15-hoje-radar-rpg-hexagonal.png"
 check_no_crash "Home Tab, Circadian Wheel, Ghost Squad & RPG Radar"
@@ -156,7 +159,9 @@ sleep 1
 # 3. Aba Treino (Execução + Mapa Anatômico de Fadiga + Sobrecarga Progressiva)
 navigate_route "workout"
 capture_screen "05-treino-execucao.png"
-adb shell input swipe 540 1900 540 380 400
+adb shell input swipe 540 1900 540 340 400
+sleep 1
+adb shell input swipe 540 1800 540 620 400
 sleep 2
 capture_screen "06-treino-progresso-kalo.png"
 check_no_crash "Workout Tab, Anatomical Fatigue Map & Progressive Overload"
